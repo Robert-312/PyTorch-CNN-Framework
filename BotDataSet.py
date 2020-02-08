@@ -1,0 +1,127 @@
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from datetime import datetime
+from datetime import timedelta
+import pytz
+from dateutil.tz import tzutc
+
+class BotDataSet:
+
+    def loadCSV(self, file_name):
+        df = pd.read_csv(file_name, 
+                         parse_dates=['SendDate', 'RequestDate'],
+                        dtype = {'AS Number':str})  
+
+        # Clean up
+        df['AS Name'].fillna('Unknown', inplace=True)
+        df['AS Number'].fillna('Unknown', inplace=True)
+
+        # Calculated Columns
+        df['SendRequestSeconds'] = ((pd.to_datetime(df['RequestDate']) - 
+                                    pd.to_datetime(df['SendDate']))
+                                        .dt.total_seconds()).clip(lower=0).astype('int')
+
+        # df['RequestDateTZ'] = df['RequestDate'] \
+        #                           .dt.tz_localize('America/New_York') \
+        #                           .dt.tz_convert(df['OlsonName'].item)
+
+        # df['RequestDateTZ'] = df.apply(lambda x: 
+        #                                     x.RequestDate.dt.tz_localize('America/New_York')\
+        #                                                  .dt.tz_convert(pytz.timezone(x.OlsonName))
+        #                                  , axis=1)
+        
+        self.df = df
+        
+    def get_session_column(self, group_column_1, datetime_column, time_gap, session_column, group_column_2 = None):
+        """
+        This method returns a pandas series that holds "session id"
+
+        df = The dataframe we will based the session on
+        group_column_1 = The column name will we use to partition the data on
+        datatime_column = The datetime column name we will use as the basis of the session
+        time_gap = How long between sorted requests need to elapse before we create a new session
+        session_column = The name we will give to the new session column
+        group_column_2 (Optional) = A second column name we can use to partition the data on
+
+        1) Make sue passed in df is stored by the datatime column
+        2) Copy the necessary columns into a working dataframe
+        3) Add a column that shows the last previous datetime for the partitioned data (NaT if no previous row)
+        4) Add a column that determines if the current row is a new session (NaT or too big a gap in time)
+        5) Add a column that uses cumsum() to create a LocalSessionID scoped to the partition
+        6) Add a column that uses a hash to get a global SessionID
+        7) Return just the series.  
+
+        Because we make sure the passed in dataframe is sorted, 
+            the index of the returned series matches the index of the passed in dataframe
+        """
+        
+        df = self.df
+        
+        # The dataframe must be stored by RequestDate since we are window functions on this order 
+        if not (df.index.name == datetime_column and df.index.is_monotonic()):
+            df.sort_values(datetime_column, inplace=True)
+
+        # set column names (this sorts the passed in dataframe)
+        lastColumnName = 'Last' + datetime_column
+        group = group_column_1
+        if group_column_2:
+            group = [group_column_1, group_column_2]
+
+        # select local dataframe (allows us to work only on a subset of the full dataframe)
+        if group_column_2:
+            working_df = df[[group_column_1, datetime_column, group_column_2]].copy()
+        else:
+            working_df = df[[group_column_1, datetime_column]].copy()         
+
+
+        # Create a pandas series (column) grouping by SendID that holds the previous RequestDate for that SendID
+        last = working_df.groupby(group)[datetime_column].transform(lambda x:x.shift(1))
+
+        # Append the above column to the dataframe with a name of LastRequestDate
+        working_df = pd.concat([working_df, last.rename(lastColumnName)], axis=1)
+
+        # It is a new session if LastRequestDate is null or the LastRequestDate is less then T old
+        # We cast the result as an int so we can use cumsum in the next step
+        working_df['IsNewSession'] = np.logical_or(working_df[datetime_column] - working_df[lastColumnName] > time_gap, 
+                                           working_df[lastColumnName].isnull()).astype(int)
+
+        # Use cumnsum to get the session number within a specific SendID. Note: This is not yet a global session id
+        working_df['LocalSessionID'] = working_df.groupby(group)['IsNewSession'].cumsum()
+
+        # New create a global session ID by combining the group by value and the LocalSessionID
+        if group_column_2:
+            working_df[session_column] = (
+                                                working_df[group_column_1].astype(str) + '|' 
+                                                + working_df[group_column_2].astype(str) + '|' 
+                                                + working_df['LocalSessionID'].astype(str)
+                                         ).apply(hash)
+        else:
+            working_df[session_column] =  (
+                                                working_df[group_column_1].astype(str) + '|' 
+                                                + working_df['LocalSessionID'].astype(str)
+                                          ).apply(hash)
+
+        return working_df[session_column]
+    
+    def loadSessionColumns(self, time_gap):
+        # If there is a gap of more then 2 minutes, we will call it a new session    
+        time_gap = timedelta(seconds=120)
+
+        # Session based on just the InboxID
+        self.df = pd.concat([self.df, 
+                        self.get_session_column(
+                                         group_column_1='InboxID',  
+                                         datetime_column='RequestDate', 
+                                         time_gap=time_gap, 
+                                         session_column='InboxSessionID')], 
+                        axis=1)
+
+        # Session based on just the IP Address
+        self.df = pd.concat([self.df, 
+                       self.get_session_column( 
+                                        group_column_1='IPAddress',
+                                        datetime_column='RequestDate', 
+                                        time_gap=time_gap, 
+                                        session_column='IPSessionID')], 
+                       axis=1)
