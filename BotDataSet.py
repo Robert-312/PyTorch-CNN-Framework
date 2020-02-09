@@ -104,24 +104,16 @@ class BotDataSet:
 
         return working_df[session_column]
     
-    def loadSessionColumns(self, time_gap):
-        # If there is a gap of more then 2 minutes, we will call it a new session    
-        time_gap = timedelta(seconds=120)
+    def loadSessionColumn(self, column_tuple, time_gap, group_column_2 = None):
+       
+        group_column_1, new_column_name = column_tuple
 
         # Session based on just the InboxID
         self.df = pd.concat([self.df, 
                         self.get_session_column(
-                                         group_column_1='InboxID',  
+                                         group_column_1=group_column_1,  
+                                         group_column_2=group_column_2,  
                                          datetime_column='RequestDate', 
                                          time_gap=time_gap, 
-                                         session_column='InboxSessionID')], 
+                                         session_column=new_column_name)], 
                         axis=1)
-
-        # Session based on just the IP Address
-        self.df = pd.concat([self.df, 
-                       self.get_session_column( 
-                                        group_column_1='IPAddress',
-                                        datetime_column='RequestDate', 
-                                        time_gap=time_gap, 
-                                        session_column='IPSessionID')], 
-                       axis=1)
