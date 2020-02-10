@@ -21,6 +21,10 @@ class BotDataSet:
         df['SendRequestSeconds'] = ((pd.to_datetime(df['RequestDate']) - 
                                     pd.to_datetime(df['SendDate']))
                                         .dt.total_seconds()).clip(lower=0).astype('int')
+        
+        df['SendRequestSeconds_ln'] = np.log(df['SendRequestSeconds'])
+        df['SendRequestSeconds_ln'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        df['SendRequestSeconds_ln'].fillna(0, inplace=True)
 
         # df['RequestDateTZ'] = df['RequestDate'] \
         #                           .dt.tz_localize('America/New_York') \
