@@ -18,13 +18,16 @@ class BotDataSet:
         df['AS Number'].fillna('Unknown', inplace=True)
 
         # Calculated Columns
+        # SendRequestSeconds = RequestDate - SendDate - The numbe rof seconds after the send the request came in.
         df['SendRequestSeconds'] = ((pd.to_datetime(df['RequestDate']) - 
                                     pd.to_datetime(df['SendDate']))
                                         .dt.total_seconds()).clip(lower=0).astype('int')
         
-        df['SendRequestSeconds_ln'] = np.log(df['SendRequestSeconds'])
-        df['SendRequestSeconds_ln'].replace([np.inf, -np.inf], np.nan, inplace=True)
-        df['SendRequestSeconds_ln'].fillna(0, inplace=True)
+        # Make natural log version of SendRequestSeconds
+        # By adding e (np.exp(1)), the scale goes from 1 to ~15
+        # 0 seconds would give a value of 1
+        # 2 days (172800 seconds) would give a value of 14.77
+        df['SendRequestSeconds_ln'] = np.log(df['SendRequestSeconds'] + np.exp(1)) 
 
         # df['RequestDateTZ'] = df['RequestDate'] \
         #                           .dt.tz_localize('America/New_York') \
