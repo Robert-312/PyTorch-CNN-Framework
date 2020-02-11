@@ -28,7 +28,13 @@ class BotDataSet:
         # 0 seconds would give a value of 1
         # 2 days (172800 seconds) would give a value of 14.77
         df['SendRequestSeconds_ln'] = np.log(df['SendRequestSeconds'] + np.exp(1)) 
-
+        # ln(0) = -inf and ln(-x) is complex, so we need to do clean up and set these to 1
+        df['SendRequestSeconds_ln'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        df['SendRequestSeconds_ln'].fillna(1, inplace=True)
+        
+        
+        
+        ## Convert ReqeustDate to TimeZone of the request IP Address
         # df['RequestDateTZ'] = df['RequestDate'] \
         #                           .dt.tz_localize('America/New_York') \
         #                           .dt.tz_convert(df['OlsonName'].item)
