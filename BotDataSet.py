@@ -57,13 +57,14 @@ class BotDataSet:
         session_column = The name we will give to the new session column
         group_column_2 (Optional) = A second column name we can use to partition the data on
 
-        1) Make sue passed in df is stored by the datatime column
-        2) Copy the necessary columns into a working dataframe
-        3) Add a column that shows the last previous datetime for the partitioned data (NaT if no previous row)
-        4) Add a column that determines if the current row is a new session (NaT or too big a gap in time)
-        5) Add a column that uses cumsum() to create a LocalSessionID scoped to the partition
-        6) Add a column that uses a hash to get a global SessionID
-        7) Return just the series.  
+        1) Make sue passed in df is indexed and sorted by the datatime column
+        2) Build group list -  group = group_column_1 OR group = [group_column_1, group_column_2]
+        3) Copy the necessary columns into a working dataframe
+        4) Add a column that shows the last previous datetime for the partitioned data (NaT if no previous row)
+        5) Add a column that determines if the current row is a new session (NaT or too big a gap in time)
+        6) Add a column that uses cumsum() to create a LocalSessionID scoped to the partition
+        7) Add a column that uses a hash to get a global SessionID
+        8) Return just the series.  
 
         Because we make sure the passed in dataframe is sorted, 
             the index of the returned series matches the index of the passed in dataframe
