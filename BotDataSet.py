@@ -118,9 +118,7 @@ class BotDataSet:
 
         return working_df[session_column]
     
-    def loadSessionColumn(self, column_tuple, time_gap, group_column_2 = None):
-       
-        group_column_1, new_column_name = column_tuple
+    def loadSessionColumn(self, new_column_name, time_gap, group_column_1, group_column_2 = None):
 
         # Session based on just the InboxID
         self.df = pd.concat([self.df, 
