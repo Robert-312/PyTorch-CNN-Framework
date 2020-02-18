@@ -16,6 +16,7 @@ class BotDataSet:
         # Clean up
         df['AS Name'].fillna('Unknown', inplace=True)
         df['AS Number'].fillna('Unknown', inplace=True)
+        df.loc[df['AS Number']=='Unknown','CIDR Range'] = 'Unknown'
 
         # Calculated Columns
         # SendRequestSeconds = RequestDate - SendDate - The numbe rof seconds after the send the request came in.
