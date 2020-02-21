@@ -7,8 +7,11 @@ import pytz
 from dateutil.tz import tzutc
 
 class BotDataSet:
+    
+    def __init__(self): 
+        self.df = None
 
-    def loadCSV(self, file_name):
+    def loadCSV(self, file_name, append=False):
         df = pd.read_csv(file_name, 
                          parse_dates=['SendDate', 'RequestDate'],
                         dtype = {'AS Number':str})  
@@ -33,19 +36,10 @@ class BotDataSet:
         df['SendRequestSeconds_ln'].replace([np.inf, -np.inf], np.nan, inplace=True)
         df['SendRequestSeconds_ln'].fillna(1, inplace=True)
         
-        
-        
-        ## Convert ReqeustDate to TimeZone of the request IP Address
-        # df['RequestDateTZ'] = df['RequestDate'] \
-        #                           .dt.tz_localize('America/New_York') \
-        #                           .dt.tz_convert(df['OlsonName'].item)
-
-        # df['RequestDateTZ'] = df.apply(lambda x: 
-        #                                     x.RequestDate.dt.tz_localize('America/New_York')\
-        #                                                  .dt.tz_convert(pytz.timezone(x.OlsonName))
-        #                                  , axis=1)
-        
-        self.df = df
+        if self.df is not None and append:
+            self.df = self.df.append(df)
+        else:
+            self.df = df
         
     def get_session_column(self, group_column_1, datetime_column, time_gap, session_column, group_column_2 = None):
         """
