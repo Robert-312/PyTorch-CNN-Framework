@@ -137,7 +137,7 @@ class CheXpertCleanMetaData():
     def saveCleanDF(self):
         self.df_clean.to_csv(self.intermediateFilePath())
             
-    def getCleanDF(self):
+    def getCleanDF(self, n_random_rows = 0):
         if self.df_clean is None:
             if not self.intermediateFileExists():
                 self.getDF()
@@ -147,7 +147,10 @@ class CheXpertCleanMetaData():
 
             self.df_clean = pd.read_csv(self.intermediateFilePath(), index_col=0)
         
-        return self.df_clean
+        if n_random_rows == 0:
+            return self.df_clean
+        else:
+            return self.df_clean.sample(n=n_random_rows, random_state = 42) 
     
     def displayImage(self, idx):
         return io.imread(self.getCleanDF().iloc[idx].Image_Path, as_gray=False)
