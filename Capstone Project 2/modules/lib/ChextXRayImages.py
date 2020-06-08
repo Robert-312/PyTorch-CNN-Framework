@@ -166,7 +166,7 @@ class CleanMetaData():
             return self.df_clean.sample(n=n_random_rows, random_state = 42) 
     
     def displayImage(self, idx):
-        return io.imread(self.getCleanDF().iloc[idx].Image_Path, as_gray=False)
+        return io.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Image_Path), as_gray=False)
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, df, transform=None):
@@ -211,10 +211,10 @@ class Dataset(torch.utils.data.Dataset):
             
     def __getitem__(self, idx):
         # take the data sample by its index
-        img_path = self.data[idx]
+        img_path = os.path.join(os.getcwd(), self.data[idx])
 
         # read image
-        img = Image.open(img_path)
+        img = Image.open(img_path, 'r')
 
         # apply the image augmentations if needed
         if self.transform:
