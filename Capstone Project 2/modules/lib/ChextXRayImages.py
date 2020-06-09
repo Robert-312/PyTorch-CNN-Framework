@@ -5,6 +5,7 @@ from collections import defaultdict
 import os, os.path
 from os.path import dirname, basename, isfile, join
 import glob
+import cv2
 from PIL import Image
 from skimage import io
 
@@ -36,7 +37,7 @@ class CleanMetaData():
                                 'Sex_Unknown',
                                 'Orientation_PA',
                                 'Support Devices']
-        self.meta_columns = ['Image_Path']
+        self.meta_columns = ['Image_Path', 'Hierarchical_Path']
         self.target_columns = [ 'Enlarged_Cardiomediastinum',
                                 'Cardiomegaly',
                                 'Lung_Opacity',
@@ -97,6 +98,14 @@ class CleanMetaData():
         df['StudyID'] = df.Path.str.slice(path_start_index_study,path_end_index_patient) \
                                             .str.replace('study', '') \
                                             .str.replace('/', '').astype(int)
+        
+        # Add Hierarchal Path
+        df['FirstFolderID'] = (df.apply(self.rowIndex__, axis=1) % 50).astype('int')
+        df['SecondFolderID'] = (df.PatientID % 50).astype('int')
+        df['Hierarchical_Path'] = 'data/d' + \
+                                    df['FirstFolderID'].apply(str) + '/d' + \
+                                    df['SecondFolderID'].apply(str) + '/i' + \
+                                    df.apply(self.rowIndex__, axis=1).apply(str) + '.jpg'
 
         # Add image path with proper relative URI
         df['Image_Path'] = df.Path.str.replace(path_prefix, self.imageFolderPath())
@@ -165,8 +174,14 @@ class CleanMetaData():
         else:
             return self.df_clean.sample(n=n_random_rows, random_state = 42) 
     
-    def displayImage(self, idx):
-        return io.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Image_Path), as_gray=False)
+    def displayImage(self, idx, use_hierarchical_path=False):
+        if use_hierarchical_path:
+            return cv2.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Hierarchical_Path))
+        else:
+            return cv2.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Image_Path))
+    
+    def rowIndex__(self, row):
+        return row.name
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, df, transform=None):
@@ -192,7 +207,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # Load the image and lables for each row in the DataFrame
         for _, row in df.iterrows():
-            self.data.append(row.Image_Path)
+            self.data.append(row.Hierarchical_Path)
             self.Enlarged_Cardiomediastinum.append(row['Enlarged_Cardiomediastinum'])
             self.Cardiomegaly.append(row['Cardiomegaly'])
             self.Lung_Opacity.append(row['Lung_Opacity'])
@@ -210,34 +225,46 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.data)
             
     def __getitem__(self, idx):
+        
+        result = None
+        
         # take the data sample by its index
-        img_path = os.path.join(os.getcwd(), self.data[idx])
-
+        img_path = self.data[idx]
+        
         # read image
-        img = Image.open(img_path, 'r')
+        if glob.glob(img_path):
+            try:
+                img = cv2.imread(img_path)
+                img = Image.fromarray(img)
+            except:
+                try:
+                    img = Image.open(img_path, 'r')
+                except:
+                    self.__next__
+                pass
 
-        # apply the image augmentations if needed
-        if self.transform:
-            img = self.transform(img)
+            # apply the image augmentations if needed
+            if self.transform:
+                img = self.transform(img)
 
-        # return the image and all the associated labels
-        result = {
-            'img': img,
-            'labels': {
-                        'Enlarged_Cardiomediastinum': self.Enlarged_Cardiomediastinum[idx],
-                        'Cardiomegaly': self.Cardiomegaly[idx],
-                        'Lung_Opacity': self.Lung_Opacity[idx],
-                        'Lung_Lesion': self.Lung_Lesion[idx],
-                        'Edema': self.Edema[idx],
-                        'Consolidation': self.Consolidation[idx],
-                        'Pneumonia': self.Pneumonia[idx],
-                        'Atelectasis': self.Atelectasis[idx],
-                        'Pneumothorax': self.Pneumothorax[idx],
-                        'Pleural_Effusion': self.Pleural_Effusion[idx],
-                        'Pleural_Other': self.Pleural_Other[idx],
-                        'Fracture': self.Fracture[idx]
-                    }
-        }
+            # return the image and all the associated labels
+            result = {
+                'img': img,
+                'labels': {
+                            'Enlarged_Cardiomediastinum': self.Enlarged_Cardiomediastinum[idx],
+                            'Cardiomegaly': self.Cardiomegaly[idx],
+                            'Lung_Opacity': self.Lung_Opacity[idx],
+                            'Lung_Lesion': self.Lung_Lesion[idx],
+                            'Edema': self.Edema[idx],
+                            'Consolidation': self.Consolidation[idx],
+                            'Pneumonia': self.Pneumonia[idx],
+                            'Atelectasis': self.Atelectasis[idx],
+                            'Pneumothorax': self.Pneumothorax[idx],
+                            'Pleural_Effusion': self.Pleural_Effusion[idx],
+                            'Pleural_Other': self.Pleural_Other[idx],
+                            'Fracture': self.Fracture[idx]
+                        }
+            }
         return result            
 
 class Loaders():
