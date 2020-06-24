@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 
+from enum import Enum
+
 import os, os.path
 from os.path import dirname, basename, isfile, join
 import glob
@@ -16,8 +18,32 @@ import torchvision.transforms as transforms
 from torchvision.transforms import ToTensor, ToPILImage
 
 class CleanMetaData():
+    '''
+    This class will load the csv file from CheXpert.
+    The main call to this call will be the getCleanDF() function.
+    This class will attemp to pull the clean DataFrame from memory first.  
+    If it is not loaded, it will pull the clean df from a file.
+    If this file does not exist, it will make build the clean df from scratch and safe the file.
+    The goal is to be able to make multiple calls to this class and only do the work that is necessary.
+    
+    Subsetting and train/val splits are done in this DataFrame based class.  
+    This is primarly done since transformations in PyTorch are easier to apply at the Dataset level.
+    So creating different Datasets from different DataFrames was found to be the easiest approach.
+    
+    Hierarchal Path:  This is primarly benefits running this code in Google CoLab.
+    Google Drive uses IDs for Directories.  
+    Walking images directly on an OS such as Windows is very efficent since directory navagation is a primary function of the OS.
+    But Google Drive looks like it has to do a ID lookup every time it is presented with a path.
+    This lookup is very inefficent if there are thousands of items in the root path to lookup.
+    So the Hierarchal Path column is a way of having only about 50 items in any folder.  
+    See the Capstone Project 2/notebooks/Support Notebooks for Modules/HierarchicalPath.ipynb notebook for more details.
+    
+    Note:  If you change code in this class, you should delete the file or you will simply reload the old DataFrame.
+    '''
     
     def __init__(self): 
+        
+        # Init class variables
         self.df = None
         self.df_reduced = None
         self.df_clean = None
@@ -30,6 +56,9 @@ class CleanMetaData():
         self.intermediate_train_csv = None
         self.getPaths()
         
+        self.random_state = 42
+        
+        # From EDA, we know we will have these columns in the DataFrame
         self.feature_columns = ['PatientID',
                                 'StudyID',
                                 'Age',
@@ -158,7 +187,17 @@ class CleanMetaData():
     def saveCleanDF(self):
         self.df_clean.to_csv(self.intermediateFilePath())
             
-    def getCleanDF(self, n_random_rows = 0):
+    def getCleanDF(self, n_random_rows=0, val_percent=0):
+        '''
+        Main function.  
+        
+        n_random_rows lets you randomly pick the number of rows you want to use.  Often times used to do quick tests on model changes
+        
+        val_percent will split the result into 2 DataFrames, train and val
+        
+        Note:  Only the complete DataFrame is stored in memory.  
+        So recalling this method with random rows or the validation percent will not be deterministic.
+        '''
         if self.df_clean is None:
             if not self.intermediateFileExists():
                 self.getDF()
@@ -168,22 +207,53 @@ class CleanMetaData():
 
             self.df_clean = pd.read_csv(self.intermediateFilePath(), index_col=0)
         
-        
+        result = None
         if n_random_rows == 0:
-            return self.df_clean
+            # All rows in df_Clean
+            result =  self.df_clean
         else:
-            return self.df_clean.sample(n=n_random_rows, random_state = 42) 
+            # Subset of df_clean
+            result =  self.df_clean.sample(n=n_random_rows, random_state = self.random_state) 
+            
+        if val_percent > 0 and val_percent < 1:
+            # train/val split
+            # Note: The split can be done of full df_Clean or subset of df_clean
+            np.random.RandomState(self.random_state)
+            train_mask = np.random.rand(len(result)) < val_percent
+            result = (result[train_mask], result[~train_mask])
+    
+        return result
     
     def displayImage(self, idx, use_hierarchical_path=False):
+        '''
+        Mostly a check to make sure we can retrieve an image
+        
+        See the docstrings at the class level about Hierarchical Path
+        '''
+        
         if use_hierarchical_path:
             return cv2.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Hierarchical_Path))
         else:
             return cv2.imread(os.path.join(os.getcwd(), self.getCleanDF().iloc[idx].Image_Path))
     
     def rowIndex__(self, row):
+        # Private function to get value of the index for a row
         return row.name
 
 class Dataset(torch.utils.data.Dataset):
+    
+    '''
+    We build our own derived call of PyTorch's Dataset class.
+    This allows us to do 2 primary things:
+     - It allows us to read the clean DataFrame from above and store the multiple lables
+     - It also allows us to format the output of the iteration to return the lables along with the image
+     
+    Since we pass in the transform into the constructor, the Dataset can have only one transformation.
+    
+    So we use the train/split from the CleanMetaData class to create multiple DataFrames.
+    Each DataFrame along with a transformation is used to create a seperate Dataset for train and val.
+    '''
+    
     def __init__(self, df, transform=None):
 
         # initialize the arrays to store the ground truth labels and paths to the images
@@ -207,7 +277,7 @@ class Dataset(torch.utils.data.Dataset):
 
         # Load the image and lables for each row in the DataFrame
         for _, row in df.iterrows():
-            self.data.append(row.Hierarchical_Path)
+            self.data.append(row.Hierarchical_Path) #Use Hierarchical Path so it will work for CoLab and local OS.
             self.Enlarged_Cardiomediastinum.append(row['Enlarged_Cardiomediastinum'])
             self.Cardiomegaly.append(row['Cardiomegaly'])
             self.Lung_Opacity.append(row['Lung_Opacity'])
@@ -267,7 +337,38 @@ class Dataset(torch.utils.data.Dataset):
             }
         return result            
 
+class TranformType(Enum):
+    '''
+    Simple Enum to indictate which transformat we should use for a specific Dataset
+    '''
+    
+    No = 0
+    Train = 1
+    Val = 2    
+
+    
+    
 class Loaders():
+    
+    '''
+    This class helps us create the data loaders for our PyTorch training loops.
+    
+    There are 3 variations of loaders we can build:
+     - Loader with all images
+     - Loader with a subset of images chossen at random
+     - 2 Loaders split into train/val
+     
+     We can combine the subsetting with train/val.  
+     This allows us to build training loops that are small for quick accessments of model changes.
+     
+     The image sizes, mean and SD are hard coded.  
+     See the Capstone Project 2/notebooks/Support Notebooks for Modules/ChextXRayImages_NB.ipynb notebook for the caculations.
+     
+     Unlike the CleanMetaData class, this class does not cache any objects in memory.  
+     This allows us to change things like batch size and row counts
+    
+    '''
+    
     def __init__(self):
             
         self.image_width = 320
@@ -275,53 +376,66 @@ class Loaders():
         self.pixel_mean = 0.5064167
         self.pixel_sd = 0.16673872
         
-        self.transform = None
-        self.DataFrame = None
-        self.Dataset = None
-        self.DataLoader = None
-        self.DataTrainValidateLoaders = None
+        self.train_transform = None
+        self.val_transform = None
         
-    def getTransformations(self):
-        if not self.transform:
-            self.transform = transforms.Compose(
-                                  [transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
-                                  transforms.Grayscale(1),
-                                  transforms.ToTensor(),
-                                  transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
-        return self.transform
+    def getTransformations(self, tranformType=TranformType.No):
+        
+        if tranformType == TranformType.Train:
+            if not self.train_transform:
+                self.train_transform = transforms.Compose(
+                                      [transforms.RandomAffine(degrees=8, translate=(.15,.15), shear=8),
+                                      transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
+                                      transforms.Grayscale(1),
+                                      transforms.ToTensor(),
+                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
+            return self.train_transform
+        elif tranformType == TranformType.Val:
+            if not self.val_transform:
+                self.val_transform = transforms.Compose(
+                                      [transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
+                                      transforms.Grayscale(1),
+                                      transforms.ToTensor(),
+                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
+            return self.val_transform
+        else:
+            return None
     
-    def setDataFrame(self, n_random_rows = 0):
+           
+    def getDataSet(self, n_random_rows = 0, tranformType=TranformType.No):
         md = CleanMetaData()
-        self.DataFrame = md.getCleanDF(n_random_rows)
-            
-    def getDataSet(self, n_random_rows = 0):
-        if not self.Dataset:
-            transform = self.getTransformations()
-            if not self.DataFrame:
-                self.setDataFrame(n_random_rows)
-            self.Dataset = Dataset(self.DataFrame, transform)
-        
-        return self.Dataset
+        df = md.getCleanDF(n_random_rows)
+        transform = self.getTransformations(tranformType)
+        return Dataset(df, transform)
     
-    def getDataLoader(self, batch_size=64, n_random_rows = 0):
-        if not self.DataLoader:
-            ds = self.getDataSet(n_random_rows)
-            self.DataLoader = torch.utils.data.DataLoader(ds, batch_size=batch_size)
-            
-        return self.DataLoader
+    def getDataLoader(self, batch_size=64, n_random_rows = 0, tranformType=TranformType.No):
+        ds = self.getDataSet(n_random_rows, tranformType)
+        return torch.utils.data.DataLoader(ds, batch_size=batch_size)
     
-    def getDataTrainValidateLoaders(self, batch_size=64, train_percent = 0.8, n_random_rows = 0):
-        if not self.DataTrainValidateLoaders:
-            ds = self.getDataSet(n_random_rows)
-            
-            train_length = int(len(ds) * train_percent)
-            val_length = int(len(ds) - train_length)
-            train_dataset, val_dataset = torch.utils.data.random_split(ds, [train_length, val_length])
-            
-            train_load = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
-            val_load = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
-            self.DataTrainValidateLoaders = (train_load, val_load)
-            
-        return self.DataTrainValidateLoaders 
+    def getTranValDataFrames(self, val_percent, n_random_rows = 0):
+        md = CleanMetaData()
+        return md.getCleanDF(n_random_rows=n_random_rows, val_percent=val_percent)
+    
+    def getTrainValDataSets(self, val_percent, n_random_rows = 0):
+        train_df, val_df = self.getTranValDataFrames(val_percent, n_random_rows)
+           
+        train_transform = self.getTransformations(TranformType.Train)
+        val_transform = self.getTransformations(TranformType.Val)
         
+        return (
+                    Dataset(train_df, train_transform),
+                    Dataset(val_df, val_transform)
+                )
+    
+    def getDataTrainValidateLoaders(self, batch_size=64, val_percent = 0.2, n_random_rows = 0):
+        train_dataset, val_dataset = self.getTrainValDataSets(val_percent, n_random_rows)
+
+        train_load = torch.utils.data.DataLoader(train_dataset, 
+                                                 batch_size=batch_size)
+
+        val_load = torch.utils.data.DataLoader(val_dataset, 
+                                               batch_size=batch_size)
+
+        return (train_load, val_load)
+ 
         
