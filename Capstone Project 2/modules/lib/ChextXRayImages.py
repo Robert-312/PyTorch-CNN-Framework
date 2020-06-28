@@ -418,7 +418,7 @@ class Loaders():
     
     def getDataLoader(self, batch_size=64, n_random_rows = 0, tranformType=TranformType.No):
         ds = self.getDataSet(n_random_rows, tranformType)
-        return torch.utils.data.DataLoader(ds, batch_size=batch_size)
+        return torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
     
     def getTranValDataFrames(self, val_percent, n_random_rows = 0):
         md = CleanMetaData()
@@ -439,10 +439,12 @@ class Loaders():
         train_dataset, val_dataset = self.getTrainValDataSets(val_percent, n_random_rows)
 
         train_load = torch.utils.data.DataLoader(train_dataset, 
-                                                 batch_size=batch_size)
+                                                 batch_size=batch_size, 
+                                                 shuffle=True)
 
         val_load = torch.utils.data.DataLoader(val_dataset, 
-                                               batch_size=batch_size)
+                                               batch_size=batch_size, 
+                                               shuffle=False)
 
         return (train_load, val_load)
  
