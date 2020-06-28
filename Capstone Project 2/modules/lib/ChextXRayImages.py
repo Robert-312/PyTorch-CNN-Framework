@@ -206,6 +206,9 @@ class CleanMetaData():
                 self.saveCleanDF()
 
             self.df_clean = pd.read_csv(self.intermediateFilePath(), index_col=0)
+            
+            for c in self.target_columns:
+                self.df_clean[c] = self.df_clean[c].astype('int8')
         
         result = None
         if n_random_rows == 0:
@@ -278,18 +281,23 @@ class Dataset(torch.utils.data.Dataset):
         # Load the image and lables for each row in the DataFrame
         for _, row in df.iterrows():
             self.data.append(row.Hierarchical_Path) #Use Hierarchical Path so it will work for CoLab and local OS.
-            self.Enlarged_Cardiomediastinum.append(row['Enlarged_Cardiomediastinum'])
-            self.Cardiomegaly.append(row['Cardiomegaly'])
-            self.Lung_Opacity.append(row['Lung_Opacity'])
-            self.Lung_Lesion.append(row['Lung_Lesion'])
-            self.Edema.append(row['Edema'])
-            self.Consolidation.append(row['Consolidation'])
-            self.Pneumonia.append(row['Pneumonia'])
-            self.Atelectasis.append(row['Atelectasis'])
-            self.Pneumothorax.append(row['Pneumothorax'])
-            self.Pleural_Effusion.append(row['Pleural_Effusion'])
-            self.Pleural_Other.append(row['Pleural_Other'])
-            self.Fracture.append(row['Fracture'])
+            
+            #todo: Find loss function that combines multi-class (null, -1, 0, 1) and multi-label (Edema & Fracture & Cardiomegaly)
+            # Their are 4 possible values for each target (null=No Mention, -1=Negative, 0=Uncertain, 1=Positive)
+            # For now: we will just make null=No Mention, -1=Negative, 0=Uncertain all have a value of 0
+            # i.e. Of the 12 targets, each will have a simple binary classification (Positive, Not-Positive)
+            self.Enlarged_Cardiomediastinum.append(np.maximum(int(row['Enlarged_Cardiomediastinum']),0))
+            self.Cardiomegaly.append(np.maximum(int(row['Cardiomegaly']),0))
+            self.Lung_Opacity.append(np.maximum(int(row['Lung_Opacity']),0))
+            self.Lung_Lesion.append(np.maximum(int(row['Lung_Lesion']),0))
+            self.Edema.append(np.maximum(int(row['Edema']),0))
+            self.Consolidation.append(np.maximum(int(row['Consolidation']),0))
+            self.Pneumonia.append(np.maximum(int(row['Pneumonia']),0))
+            self.Atelectasis.append(np.maximum(int(row['Atelectasis']),0))
+            self.Pneumothorax.append(np.maximum(int(row['Pneumothorax']),0))
+            self.Pleural_Effusion.append(np.maximum(int(row['Pleural_Effusion']),0))
+            self.Pleural_Other.append(np.maximum(int(row['Pleural_Other']),0))
+            self.Fracture.append(np.maximum(int(row['Fracture']),0))
             
     def __len__(self):
         return len(self.data)
@@ -320,20 +328,20 @@ class Dataset(torch.utils.data.Dataset):
             # return the image and all the associated labels
             result = {
                 'img': img,
-                'labels': {
-                            'Enlarged_Cardiomediastinum': self.Enlarged_Cardiomediastinum[idx],
-                            'Cardiomegaly': self.Cardiomegaly[idx],
-                            'Lung_Opacity': self.Lung_Opacity[idx],
-                            'Lung_Lesion': self.Lung_Lesion[idx],
-                            'Edema': self.Edema[idx],
-                            'Consolidation': self.Consolidation[idx],
-                            'Pneumonia': self.Pneumonia[idx],
-                            'Atelectasis': self.Atelectasis[idx],
-                            'Pneumothorax': self.Pneumothorax[idx],
-                            'Pleural_Effusion': self.Pleural_Effusion[idx],
-                            'Pleural_Other': self.Pleural_Other[idx],
-                            'Fracture': self.Fracture[idx]
-                        }
+                'labels': torch.FloatTensor([
+                                            self.Enlarged_Cardiomediastinum[idx], #Enlarged_Cardiomediastinum
+                                            self.Cardiomegaly[idx], #Cardiomegaly
+                                            self.Lung_Opacity[idx], #Lung_Opacity
+                                            self.Lung_Lesion[idx], #Lung_Lesion
+                                            self.Edema[idx], #Edema
+                                            self.Consolidation[idx], #Consolidation
+                                            self.Pneumonia[idx], #Pneumonia
+                                            self.Atelectasis[idx], #Atelectasis
+                                            self.Pneumothorax[idx], #Pneumothorax
+                                            self.Pleural_Effusion[idx], #Pleural_Effusion
+                                            self.Pleural_Other[idx], #Pleural_Other
+                                            self.Fracture[idx] #Fracture
+                                            ])
             }
         return result            
 

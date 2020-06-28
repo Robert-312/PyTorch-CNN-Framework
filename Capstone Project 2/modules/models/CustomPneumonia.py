@@ -11,6 +11,7 @@ class CustomPneumoniaNN(nn.Module):
     def __init__(self):
         super(CustomPneumoniaNN, self).__init__()
         self.pool = nn.MaxPool2d(2, 2)
+        self.softmax = nn.Softmax(dim=1)
 
         #Input image size = 320x320
  
@@ -56,7 +57,7 @@ class CustomPneumoniaNN(nn.Module):
         # FC3 2 output channels, this need to match the number of labels we have (binary in this case)
         # 2x1014 slopes and 2 y-intercepts = 2050 trainable parameters
         # The softmax (or log softmax for Cross Entrypy) is done in the loss function to detmine the probability for each class
-        self.fc3 = nn.Linear(512, 2)
+        self.fc3 = nn.Linear(512, 12)
 
         # Regularization:  Dropout is kind of like ensemble component of Random Forest
         #  RF will randomly pick some features for each tree in the ensemble
@@ -95,4 +96,4 @@ class CustomPneumoniaNN(nn.Module):
         x = self.dropout(x)
 
         x = self.fc3(x)
-        return x
+        return self.softmax(x)
