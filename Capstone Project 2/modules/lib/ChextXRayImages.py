@@ -222,8 +222,8 @@ class CleanMetaData():
             # train/val split
             # Note: The split can be done of full df_Clean or subset of df_clean
             np.random.RandomState(self.random_state)
-            train_mask = np.random.rand(len(result)) < val_percent
-            result = (result[train_mask], result[~train_mask])
+            val_mask = np.random.rand(len(result)) < val_percent
+            result = (result[~val_mask], result[val_mask])
     
         return result
     
