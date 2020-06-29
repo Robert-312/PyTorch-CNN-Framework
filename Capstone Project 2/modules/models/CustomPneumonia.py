@@ -96,4 +96,4 @@ class CustomPneumoniaNN(nn.Module):
         x = self.dropout(x)
 
         x = self.fc3(x)
-        return self.softmax(x)
+        return x
