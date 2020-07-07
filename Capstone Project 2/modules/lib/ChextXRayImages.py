@@ -5,6 +5,7 @@ from collections import defaultdict
 from enum import Enum
 
 import os, os.path
+import warnings
 from os.path import dirname, basename, isfile, join
 import glob
 import cv2
@@ -149,7 +150,7 @@ class CleanMetaData():
                 (self.df.StudyID < 5) & # Don't include more than 4 studies for a single patient
                 ((self.df.Orientation == 'AP') | (self.df.Orientation == 'PA')) # Don't show Left or Right Lateral
                 ]
-     
+                
     def cleanDF(self):
         # The only columns with null values are the targets
         # -1 = negative finding (the patient does NOT have this finding)
@@ -186,6 +187,19 @@ class CleanMetaData():
     
     def saveCleanDF(self):
         self.df_clean.to_csv(self.intermediateFilePath())
+     
+    def warnFeatureImbalance(self, train, val, threshold=0.02):
+        tdf, vdf = train[self.target_columns], val[self.target_columns]
+        tlen, vlen = len(tdf), len(vdf)
+        warning_message = ''
+        for c in self.target_columns:
+            tp = len(tdf[tdf[c] == 1]) / tlen
+            vp = len(vdf[vdf[c] == 1]) / vlen
+            if tp-vp >= threshold:
+                warning_message += f'   {c}: {tp-vp:.2%}\n'
+        
+        if len(warning_message) > 0:
+            warnings.warn("\nFeature Imbalance Detected (train % - val %):\n" + warning_message, stacklevel=2)
             
     def getCleanDF(self, n_random_rows=0, val_percent=0):
         '''
@@ -216,14 +230,18 @@ class CleanMetaData():
             result =  self.df_clean
         else:
             # Subset of df_clean
-            result =  self.df_clean.sample(n=n_random_rows, random_state = self.random_state) 
+            result =  self.df_clean.sample(n=n_random_rows, random_state = self.random_state)
             
         if val_percent > 0 and val_percent < 1:
             # train/val split
             # Note: The split can be done of full df_Clean or subset of df_clean
             np.random.RandomState(self.random_state)
             val_mask = np.random.rand(len(result)) < val_percent
-            result = (result[~val_mask], result[val_mask])
+            train, value = result[~val_mask], result[val_mask]
+            
+            result = (train, value)
+            
+            self.warnFeatureImbalance(train, value)
     
         return result
     
@@ -260,6 +278,7 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(self, df, transform=None):
 
         # initialize the arrays to store the ground truth labels and paths to the images
+        self.ImageID = []
         self.data = []
         self.Enlarged_Cardiomediastinum = []
         self.Cardiomegaly = []
@@ -280,6 +299,8 @@ class Dataset(torch.utils.data.Dataset):
 
         # Load the image and lables for each row in the DataFrame
         for _, row in df.iterrows():
+            self.ImageID.append(row.name)
+            
             self.data.append(row.Hierarchical_Path) #Use Hierarchical Path so it will work for CoLab and local OS.
             
             #todo: Find loss function that combines multi-class (null, -1, 0, 1) and multi-label (Edema & Fracture & Cardiomegaly)
@@ -327,6 +348,7 @@ class Dataset(torch.utils.data.Dataset):
 
             # return the image and all the associated labels
             result = {
+                'id': self.ImageID[idx],
                 'img': img,
                 'labels': torch.FloatTensor([
                                             self.Enlarged_Cardiomediastinum[idx], #Enlarged_Cardiomediastinum
@@ -387,6 +409,14 @@ class Loaders():
         self.train_transform = None
         self.val_transform = None
         
+        self.df = None
+        self.train_df = None
+        self.val_df = None
+        
+        self.feature_columns = None
+        self.meta_columns = None
+        self.target_columns = None
+        
     def getTransformations(self, tranformType=TranformType.No):
         
         if tranformType == TranformType.Train:
@@ -412,29 +442,40 @@ class Loaders():
            
     def getDataSet(self, n_random_rows = 0, tranformType=TranformType.No):
         md = CleanMetaData()
-        df = md.getCleanDF(n_random_rows)
+        
+        self.df = md.getCleanDF(n_random_rows)
+        self.feature_columns = md.feature_columns
+        self.meta_columns = md.meta_columns
+        self.target_columns = md.target_columns
+        
         transform = self.getTransformations(tranformType)
-        return Dataset(df, transform)
+        return Dataset(self.df, transform)
     
     def getDataLoader(self, batch_size=64, n_random_rows = 0, tranformType=TranformType.No):
         ds = self.getDataSet(n_random_rows, tranformType)
         return torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
     
     def getTranValDataFrames(self, val_percent, n_random_rows = 0):
-        md = CleanMetaData()
+        md = CleanMetaData()   
+        
+        self.feature_columns = md.feature_columns
+        self.meta_columns = md.meta_columns
+        self.target_columns = md.target_columns
+        
         return md.getCleanDF(n_random_rows=n_random_rows, val_percent=val_percent)
     
     def getTrainValDataSets(self, val_percent, n_random_rows = 0):
-        train_df, val_df = self.getTranValDataFrames(val_percent, n_random_rows)
+        self.train_df, self.val_df = self.getTranValDataFrames(val_percent, n_random_rows)
            
         train_transform = self.getTransformations(TranformType.Train)
         val_transform = self.getTransformations(TranformType.Val)
         
         return (
-                    Dataset(train_df, train_transform),
-                    Dataset(val_df, val_transform)
+                    Dataset(self.train_df, train_transform),
+                    Dataset(self.val_df, val_transform)
                 )
     
+                
     def getDataTrainValidateLoaders(self, batch_size=64, val_percent = 0.2, n_random_rows = 0):
         train_dataset, val_dataset = self.getTrainValDataSets(val_percent, n_random_rows)
 
@@ -445,7 +486,7 @@ class Loaders():
         val_load = torch.utils.data.DataLoader(val_dataset, 
                                                batch_size=batch_size, 
                                                shuffle=False)
-
+        
         return (train_load, val_load)
  
         
