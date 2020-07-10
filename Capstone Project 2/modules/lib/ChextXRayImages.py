@@ -42,7 +42,10 @@ class CleanMetaData():
     Note:  If you change code in this class, you should delete the file or you will simply reload the old DataFrame.
     '''
     
-    def __init__(self): 
+    def __init__(self, binary_targets=True): 
+        
+        # Leave target as is [-1, 0, 1] or force it to be Boolean [0,1]
+        self.binary_targets = binary_targets
         
         # Init class variables
         self.df = None
@@ -173,6 +176,10 @@ class CleanMetaData():
 
         for c in self.target_columns:
             df_clean[c] = df_clean[c].astype('int8')
+            
+        if self.binary_targets:
+            for c in self.target_columns:
+                df_clean[c] = df_clean[c].map({-1:0, 0:0, 1:1})
 
         self.df_clean = df_clean
             
