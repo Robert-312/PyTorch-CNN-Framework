@@ -65,6 +65,7 @@ class TrainingLoop():
         loss.backward()
         self.optimizer.step()
         return loss.item()    
+
     
     def train(self, num_epochs, train_loader, val_loader):
         """
@@ -73,6 +74,7 @@ class TrainingLoop():
         
         for epoch in range(num_epochs):  # loop over the dataset multiple times
             start_time = datetime.now()
+            self.epoch_loss = 0
 
 
             # Training
@@ -82,9 +84,10 @@ class TrainingLoop():
                 self.metrics.appendEpochBatchData(ids, outputs)
                 self.epoch_loss += self.backProp(outputs, labels)
 
-            self.metrics.closeEpoch(i)
+            self.metrics.closeEpoch(epoch)
             training_time_elapsed = datetime.now() - start_time
             start_time = datetime.now()
+            self.losses_hx[epoch] = self.epoch_loss
 
             # Validation
             self.net.eval()
@@ -93,7 +96,7 @@ class TrainingLoop():
                     ids, inputs, labels, outputs = self.processBatch(data, is_validation=True)
                     self.metrics.appendEpochBatchData(ids, outputs, is_validation=True)
 
-            self.metrics.closeEpoch(i, is_validation=True)
+            self.metrics.closeEpoch(epoch, is_validation=True)
             validation_time_elapsed = datetime.now() - start_time
 
 
@@ -103,6 +106,7 @@ class TrainingLoop():
         \nTraining Time: {training_time_elapsed})  \
         \nValidation Time: {validation_time_elapsed})')
 
+            # Show metrics display (optional)
             if self.epoch_metric_display_args is not None:
                 self.metrics.displayMetrics(*self.epoch_metric_display_args)
             
