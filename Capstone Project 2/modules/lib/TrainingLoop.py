@@ -1,4 +1,5 @@
 from datetime import datetime
+from tqdm import tqdm
 
 import torch
 import torch.utils.data
@@ -79,7 +80,7 @@ class TrainingLoop():
 
             # Training
             self.net.train()
-            for i, data in enumerate(train_loader, 0):
+            for i, data in enumerate(tqdm(train_loader), 0):
                 ids, inputs, labels, outputs = self.processBatch(data)
                 self.metrics.appendEpochBatchData(ids, outputs)
                 self.epoch_loss += self.backProp(outputs, labels)

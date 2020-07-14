@@ -1,5 +1,4 @@
 import numpy as np
-from collections import OrderedDict
 import pandas as pd
 from sklearn import metrics
 import matplotlib.pyplot as plt
@@ -34,10 +33,10 @@ class Metrics():
         self.val_prediction_hx = {}
         self.val_probability_hx = {}
 
-        self.epoch_train_predictions = OrderedDict() # training DataLoaders shuffle the data, so we need an OrderedDict
+        self.epoch_train_predictions = {}
         self.df_train_prediction = None
         
-        self.epoch_train_probabilities = OrderedDict() # training DataLoaders shuffle the data, so we need an OrderedDict
+        self.epoch_train_probabilities = {}
         self.df_train_probability = None
 
         self.epoch_val_predictions = {}
@@ -106,12 +105,12 @@ class Metrics():
             self.updatePredictions(self.epoch_train_predictions, ids, predictions)    
             
     def getPredictionDataFrame(self, epoch_predictions):
-        result = pd.DataFrame(epoch_predictions).transpose()
+        result = pd.DataFrame(epoch_predictions).transpose().sort_index()
         result.columns = self.target_columns
         return result
 
     def getProbilityDataFrame(self, epoch_probabilities):
-        result = pd.DataFrame(epoch_probabilities).transpose()
+        result = pd.DataFrame(epoch_probabilities).transpose().sort_index()
         result.columns = self.target_columns
         return result
         
@@ -123,11 +122,11 @@ class Metrics():
         if is_validation:
             self.df_val_prediction = self.getPredictionDataFrame(self.epoch_val_predictions)
             self.val_prediction_hx[epochNumber] = self.df_val_prediction
-            self.epoch_val_predictions = OrderedDict()
+            self.epoch_val_predictions = {}
 
             self.df_val_probability = self.getProbilityDataFrame(self.epoch_val_probabilities)
             self.val_probability_hx[epochNumber] = self.df_val_probability
-            self.epoch_val_probabilities = OrderedDict()
+            self.epoch_val_probabilities = {}
         else:
             self.df_train_prediction = self.getPredictionDataFrame(self.epoch_train_predictions)
             self.train_prediction_hx[epochNumber] = self.df_train_prediction
