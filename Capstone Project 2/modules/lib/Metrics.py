@@ -1,4 +1,5 @@
 import numpy as np
+from collections import OrderedDict
 import pandas as pd
 from sklearn import metrics
 import matplotlib.pyplot as plt
@@ -33,10 +34,10 @@ class Metrics():
         self.val_prediction_hx = {}
         self.val_probability_hx = {}
 
-        self.epoch_train_predictions = {}
+        self.epoch_train_predictions = OrderedDict() # training DataLoaders shuffle the data, so we need an OrderedDict
         self.df_train_prediction = None
         
-        self.epoch_train_probabilities = {}
+        self.epoch_train_probabilities = OrderedDict() # training DataLoaders shuffle the data, so we need an OrderedDict
         self.df_train_probability = None
 
         self.epoch_val_predictions = {}
@@ -95,6 +96,9 @@ class Metrics():
         probabilities, predictions = self.getPredictionsFromOutput(outputs)        
 
         if is_validation:
+            self.epoch_val_probabilities = self.epoch_val_probabilities
+            self.epoch_val_predictions = self.epoch_val_predictions
+            
             self.updateProbabilities(self.epoch_val_probabilities, ids, probabilities)
             self.updatePredictions(self.epoch_val_predictions, ids, predictions)
         else:
@@ -119,11 +123,11 @@ class Metrics():
         if is_validation:
             self.df_val_prediction = self.getPredictionDataFrame(self.epoch_val_predictions)
             self.val_prediction_hx[epochNumber] = self.df_val_prediction
-            self.epoch_val_predictions = {}
+            self.epoch_val_predictions = OrderedDict()
 
             self.df_val_probability = self.getProbilityDataFrame(self.epoch_val_probabilities)
             self.val_probability_hx[epochNumber] = self.df_val_probability
-            self.epoch_val_probabilities = {}
+            self.epoch_val_probabilities = OrderedDict()
         else:
             self.df_train_prediction = self.getPredictionDataFrame(self.epoch_train_predictions)
             self.train_prediction_hx[epochNumber] = self.df_train_prediction
