@@ -81,7 +81,9 @@ class TrainingLoop():
             start_time = datetime.now()
             self.epoch_loss = 0
 
-
+            # Print epoch header
+            print(u"\u2583" * 50 + f'\nEpoch [{epoch+1}/{num_epochs}]\n' + u"\u2594" * 50 + '\n' + u"\u2594" * 50)
+            
             # Training
             self.net.train()
             #for i, data in enumerate(tqdm(train_loader), 0): # causes I/O timeouts on Google CoLab
@@ -92,7 +94,7 @@ class TrainingLoop():
                 train_progress_value = i/train_batch_count
                 if i>=train_batch_count: 
                     train_progress_value = 1.
-                progress = f'{train_progress_value:.1%} epoch train percent complete         \r'
+                progress = f'{train_progress_value:.1%} training progress\r'
                 sys.stdout.write(progress)
                 sys.stdout.flush()
 
@@ -110,7 +112,7 @@ class TrainingLoop():
                     val_progress_Value = i/val_batch_count
                     if i>=val_batch_count: 
                         val_progress_Value = 1.
-                    progress = f'{val_progress_Value:.1%} epoch validation percent complete         \r'
+                    progress = f'{val_progress_Value:.1%} validation progress\r'
                     sys.stdout.write(progress)
                     sys.stdout.flush()
 
@@ -119,10 +121,9 @@ class TrainingLoop():
 
 
             # stdout Results
-            print('=' * 50 + f'\nEpoch [{epoch+1}/{num_epochs}]\n' + '=' * 50)
             print(f'Epoch Loss: {self.epoch_loss:.4f} \
-        \nTraining Time: {training_time_elapsed})  \
-        \nValidation Time: {validation_time_elapsed})')
+        \nTraining Time: {training_time_elapsed}  \
+        \nValidation Time: {validation_time_elapsed}')
 
             # Show metrics display (optional)
             if self.epoch_metric_display_args is not None:

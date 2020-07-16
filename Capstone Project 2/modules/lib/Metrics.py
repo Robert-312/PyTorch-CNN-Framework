@@ -348,6 +348,7 @@ class Metrics():
 
         if metricDataSource != MetricDataSource.ValidationOnly:
             print('=' * cc + '\nTRAINING\n' + '=' * cc)
+            print(u"\u2594" * 5)
             y_train_true = train_actual[target_columns].to_numpy()
             y_train_pred = df_train_prediction.to_numpy()
             y_train_prob = df_train_probability.to_numpy()
@@ -370,6 +371,7 @@ class Metrics():
 
         if metricDataSource != MetricDataSource.TrainingOnly:
             print('=' * cc + '\nVALIDATION\n' + '=' * cc)
+            print(u"\u2594" * 7)
             y_val_true = val_actual[target_columns].to_numpy()
             y_val_pred = df_val_prediction.to_numpy()
             y_val_prob = df_val_probability.to_numpy()

@@ -1,3 +1,5 @@
+import gc
+
 from modules.lib.ChextXRayImages import *
 from modules.lib.Metrics import *
 from modules.lib.TrainingLoop import *
@@ -78,7 +80,7 @@ class ModelLoop():
     """
     
     def __init__(self,   number_images, 
-                         batch_size, 
+                         default_batch_size, 
                          default_learning_rate, 
                          num_epochs,
                          device, 
@@ -87,7 +89,7 @@ class ModelLoop():
 
         
         self.number_images = number_images
-        self.batch_size=batch_size
+        self.default_batch_size=default_batch_size
         self.default_learning_rate = default_learning_rate
         self.val_percent=0.20
         self.device = device
@@ -103,10 +105,9 @@ class ModelLoop():
         
 
         self.loaders = Loaders()
-        self.train_loader = None
-        self.val_loader = None
-        self.train_loader, self.val_loader = self.loaders.getDataTrainValidateLoaders(batch_size=self.batch_size, 
-                                                                                val_percent=self.val_percent, 
+        self.train_dataset = None
+        self.val_dataset = None
+        self.train_dataset, self.val_dataset = self.loaders.getTrainValDataSets(val_percent=self.val_percent, 
                                                                                 n_random_rows=self.number_images)
 
         self.target_columns = self.loaders.target_columns
@@ -118,10 +119,21 @@ class ModelLoop():
         
         self.trainers = []
         
-        for name, net, lr in nets:
+        for name, net, lr, bs in nets:
             
             if lr==0:
-                lr = self.default_learning_rate
+                lr = self.default_batch_size
+                
+            if bs==0:
+                bs = self.default_batch_size
+            
+            self.train_loader = torch.utils.data.DataLoader(self.train_dataset, 
+                                                 batch_size=bs, 
+                                                 shuffle=True)
+            
+            self.val_loader = torch.utils.data.DataLoader(self.val_dataset, 
+                                               batch_size=bs, 
+                                               shuffle=False)
             
             criterion = nn.BCEWithLogitsLoss()
             optimizer = optim.Adam(net.parameters(), lr=lr)   
@@ -135,8 +147,11 @@ class ModelLoop():
 
     def train(self):
         for trainer in self.trainers:
+            gc.collect
             name, metrics, trainingLoop = trainer
-            print(u"\u2588" * 100 + '\n' + name + '\n' + u"\u2588" * 100)
+            print(u"\u2586" * 30 + '\n')
+            print(name + '\n')
+            print(u"\u2585" * 30)
             trainingLoop.train(self.num_epochs, self.train_loader, self.val_loader)
             metrics.displayMetrics(*self.epoch_metric_display_args)
             print('\n' * 5)
