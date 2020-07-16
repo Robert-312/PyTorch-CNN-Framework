@@ -1,5 +1,6 @@
+import sys
 from datetime import datetime
-from tqdm import tqdm
+# from tqdm import tqdm
 
 import torch
 import torch.utils.data
@@ -73,6 +74,9 @@ class TrainingLoop():
         docstring
         """
         
+        train_batch_count = len(train_loader)
+        val_batch_count = len(val_loader)
+        
         for epoch in range(num_epochs):  # loop over the dataset multiple times
             start_time = datetime.now()
             self.epoch_loss = 0
@@ -80,10 +84,17 @@ class TrainingLoop():
 
             # Training
             self.net.train()
-            for i, data in enumerate(tqdm(train_loader), 0):
+            #for i, data in enumerate(tqdm(train_loader), 0): # causes I/O timeouts on Google CoLab
+            for i, data in enumerate(train_loader, 0):
                 ids, inputs, labels, outputs = self.processBatch(data)
                 self.metrics.appendEpochBatchData(ids, outputs)
                 self.epoch_loss += self.backProp(outputs, labels)
+                train_progress_value = i/train_batch_count
+                if i>=train_batch_count: 
+                    train_progress_value = 1.
+                progress = f'{train_progress_value:.1%} epoch train percent complete         \r'
+                sys.stdout.write(progress)
+                sys.stdout.flush()
 
             self.metrics.closeEpoch(epoch)
             training_time_elapsed = datetime.now() - start_time
@@ -93,9 +104,15 @@ class TrainingLoop():
             # Validation
             self.net.eval()
             with torch.no_grad():
-              for data in val_loader:          
+              for i, data in enumerate(val_loader, 0):         
                     ids, inputs, labels, outputs = self.processBatch(data, is_validation=True)
                     self.metrics.appendEpochBatchData(ids, outputs, is_validation=True)
+                    val_progress_Value = i/val_batch_count
+                    if i>=val_batch_count: 
+                        val_progress_Value = 1.
+                    progress = f'{val_progress_Value:.1%} epoch validation percent complete         \r'
+                    sys.stdout.write(progress)
+                    sys.stdout.flush()
 
             self.metrics.closeEpoch(epoch, is_validation=True)
             validation_time_elapsed = datetime.now() - start_time

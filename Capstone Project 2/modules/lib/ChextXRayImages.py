@@ -181,7 +181,7 @@ class CleanMetaData():
             for c in self.target_columns:
                 df_clean[c] = df_clean[c].map({-1:0, 0:0, 1:1})
 
-        self.df_clean = df_clean
+        self.df_clean = df_clean.sort_index()
             
     def imageFolderPath(self):
         return self.train_image_path
@@ -237,14 +237,14 @@ class CleanMetaData():
             result =  self.df_clean
         else:
             # Subset of df_clean
-            result =  self.df_clean.sample(n=n_random_rows, random_state = self.random_state)
+            result =  self.df_clean.sample(n=n_random_rows, random_state = self.random_state).sort_index()
             
         if val_percent > 0 and val_percent < 1:
             # train/val split
             # Note: The split can be done of full df_Clean or subset of df_clean
             np.random.RandomState(self.random_state)
             val_mask = np.random.rand(len(result)) < val_percent
-            train, value = result[~val_mask], result[val_mask]
+            train, value = result[~val_mask].sort_index(), result[val_mask].sort_index()
             
             result = (train, value)
             

@@ -180,20 +180,20 @@ class Metrics():
         errors = {}
 
         try:
-            itemized_recall = metrics.recall_score(y_true=y_true, y_pred=y_pred, average=None)
+            itemized_recall = metrics.recall_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
         except Exception as e:
             errors['Recall'] = e
             itemized_recall = nans
 
 
         try:    
-            itemized_precision = metrics.precision_score(y_true=y_true, y_pred=y_pred, average=None)
+            itemized_precision = metrics.precision_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
         except Exception as e:
             errors['Precision'] = e
             itemized_precision = nans
 
         try:    
-            itemized_f1 = metrics.f1_score(y_true=y_true, y_pred=y_pred, average=None)
+            itemized_f1 = metrics.f1_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
         except Exception as e:
             errors['F1'] = e
             itemized_f1 = nans
