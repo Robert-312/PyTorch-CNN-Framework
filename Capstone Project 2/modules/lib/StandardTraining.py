@@ -21,7 +21,8 @@ class StandardTraining():
                          num_epochs,
                          device, 
                          net,
-                         epoch_args='standard'):
+                         epoch_args='standard',
+                         use_positivity_weights=True):
         
         self.number_images = number_images
         self.batch_size=batch_size
@@ -46,6 +47,17 @@ class StandardTraining():
         
         print(f'Number of Training Images: {len(self.train_actual):,}')
         print(f'Number of Validation Images: {len(self.val_actual):,}')
+        
+        if use_positivity_weights:
+            df_positivity = self.train_actual[self.target_columns]
+            positivity_weights = df_positivity[df_positivity!=1].count(axis=0) 
+            positivity_weights = positivity_weights / df_positivity.sum(axis=0)
+            print("\n\nPositivity Weights used in BCEWithLogitsLoss:")
+            display(positivity_weights)
+            pos_weight = torch.tensor(positivity_weights.values)
+            self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        else:
+            self.criterion = nn.BCEWithLogitsLoss()
         
         self.criterion = nn.BCEWithLogitsLoss()
         self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate)
@@ -119,7 +131,10 @@ class ModelLoop():
         
         self.trainers = []
         
-        for name, net, lr, bs in nets:
+        for i, t in enumerate(nets):
+            if i >= len(nets): 
+                    break
+            name, net, lr, bs = t
             
             if lr==0:
                 lr = self.default_batch_size
@@ -154,6 +169,8 @@ class ModelLoop():
             print(u"\u2585" * 30)
             trainingLoop.train(self.num_epochs, self.train_loader, self.val_loader)
             metrics.displayMetrics(*self.epoch_metric_display_args)
+            del trainingLoop
+            del metrics
             print('\n' * 5)
 
 

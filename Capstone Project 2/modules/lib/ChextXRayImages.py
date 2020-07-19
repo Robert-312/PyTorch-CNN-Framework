@@ -429,7 +429,7 @@ class Loaders():
         if tranformType == TranformType.Train:
             if not self.train_transform:
 #                 self.train_transform = transforms.Compose(
-#                                       [transforms.RandomAffine(degrees=8, translate=(.15,.15), shear=8),
+#                                       [transforms.RandomAffine(degrees=4, translate=(.07,.07), shear=4),
 #                                       transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
 #                                       transforms.Grayscale(1),
 #                                       transforms.ToTensor(),
