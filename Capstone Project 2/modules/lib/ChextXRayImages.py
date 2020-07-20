@@ -428,17 +428,17 @@ class Loaders():
         
         if tranformType == TranformType.Train:
             if not self.train_transform:
-#                 self.train_transform = transforms.Compose(
-#                                       [transforms.RandomAffine(degrees=4, translate=(.07,.07), shear=4),
-#                                       transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
-#                                       transforms.Grayscale(1),
-#                                       transforms.ToTensor(),
-#                                       transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
                 self.train_transform = transforms.Compose(
-                                      [transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
+                                      [transforms.RandomAffine(degrees=3, translate=(.03,.03), shear=3),
+                                      transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
                                       transforms.Grayscale(1),
                                       transforms.ToTensor(),
-                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])                
+                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
+#                 self.train_transform = transforms.Compose(
+#                                       [transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
+#                                       transforms.Grayscale(1),
+#                                       transforms.ToTensor(),
+#                                       transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])                
             return self.train_transform
         elif tranformType == TranformType.Val:
             if not self.val_transform:
