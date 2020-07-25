@@ -208,9 +208,7 @@ class Metrics():
             itemized_ap = metrics.average_precision_score(y_true=y_true, y_score=y_prob, average=None)
         except Exception as e:
             errors['Avg Precision'] = e
-            itemized_auc = nans
-
-            ap = metrics.average_precision_score(target_true, target_probs)
+            itemized_ap = nans
 
         df_itemized = pd.DataFrame({'Target':target_columns, 
                                     'True Positive Count':true_positive_count, 

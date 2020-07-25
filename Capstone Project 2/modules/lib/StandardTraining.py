@@ -1,4 +1,5 @@
 import gc
+from collections import namedtuple
 
 from modules.lib.ChextXRayImages import *
 from modules.lib.Metrics import *
@@ -22,7 +23,16 @@ class StandardTraining():
                          device, 
                          net,
                          epoch_args='standard',
-                         use_positivity_weights=True):
+                         use_positivity_weights=True, 
+                         image_width = 320,
+                         image_height = 320,
+                         affineDegrees=5, 
+                         translatePrecent=0.05, 
+                         shearDegrees=5, 
+                         brightnessJitter=0.2, 
+                         contrastJitter=0.1, 
+                         augPercent=0.2,
+                         observation_min_count = None):
         
         self.number_images = number_images
         self.batch_size=batch_size
@@ -34,7 +44,16 @@ class StandardTraining():
         self.num_epochs = num_epochs
         
 
-        self.loaders = Loaders()
+        self.loaders = Loaders(  image_width = image_width,
+                                 image_height = image_height,
+                                 affineDegrees=affineDegrees, 
+                                 translatePrecent=translatePrecent, 
+                                 shearDegrees=shearDegrees, 
+                                 brightnessJitter=brightnessJitter, 
+                                 contrastJitter=contrastJitter, 
+                                 augPercent=augPercent,
+                                 observation_min_count=observation_min_count)
+
         self.train_loader = None
         self.val_loader = None
         self.train_loader, self.val_loader = self.loaders.getDataTrainValidateLoaders(batch_size=self.batch_size, 
@@ -52,7 +71,7 @@ class StandardTraining():
             df_positivity = self.train_actual[self.target_columns]
             positivity_weights = df_positivity[df_positivity!=1].count(axis=0) 
             positivity_weights = positivity_weights / df_positivity.sum(axis=0)
-            print("\n\nPositivity Weights used in BCEWithLogitsLoss:")
+            print("\n\Positive Weights used in BCEWithLogitsLoss:")
             display(positivity_weights)
             pos_weight = torch.tensor(positivity_weights.values)
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -83,13 +102,17 @@ class StandardTraining():
         
     def displayMetrics(self):
         self.metrics.displayMetrics()
-        
-        
+                
 class ModelLoop():
     
     """
     docstring
     """
+    
+    def getConfigObject(name, net, learning_rate=None, batch_size=None, observation_min_count=None):
+        config = namedtuple("NetConfig", "name net learning_rate batch_size observation_min_count")
+        return config(name, net, learning_rate, batch_size, observation_min_count)
+        
     
     def __init__(self,   number_images, 
                          default_batch_size, 
@@ -117,24 +140,16 @@ class ModelLoop():
         
 
         self.loaders = Loaders()
-        self.train_dataset = None
-        self.val_dataset = None
-        self.train_dataset, self.val_dataset = self.loaders.getTrainValDataSets(val_percent=self.val_percent, 
-                                                                                n_random_rows=self.number_images)
-
+        
         self.target_columns = self.loaders.target_columns
-        self.train_actual = self.loaders.train_df
-        self.val_actual = self.loaders.val_df
         
-        print(f'Number of Training Images: {len(self.train_actual):,}')
-        print(f'Number of Validation Images: {len(self.val_actual):,}')
-        
+        trainer = namedtuple("Trainer", "name train_actual val_actual train_loader val_loader metrics trainingLoop")
         self.trainers = []
         
-        for i, t in enumerate(nets):
+        for i, config in enumerate(nets):
             if i >= len(nets): 
                     break
-            name, net, lr, bs = t
+            name, net, lr, bs = config.name, config.net, config.learning_rate, config.batch_size
             
             if lr==0:
                 lr = self.default_batch_size
@@ -142,35 +157,40 @@ class ModelLoop():
             if bs==0:
                 bs = self.default_batch_size
             
-            self.train_loader = torch.utils.data.DataLoader(self.train_dataset, 
-                                                 batch_size=bs, 
-                                                 shuffle=True)
+            train_loader, val_loader = self.loaders.getDataTrainValidateLoaders(batch_size=bs,
+                                                                                val_percent=self.val_percent, 
+                                                                                n_random_rows=self.number_images)
             
-            self.val_loader = torch.utils.data.DataLoader(self.val_dataset, 
-                                               batch_size=bs, 
-                                               shuffle=False)
+            train_actual = self.loaders.train_df
+            val_actual = self.loaders.val_df
             
             criterion = nn.BCEWithLogitsLoss()
             optimizer = optim.Adam(net.parameters(), lr=lr)   
             
-            metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, cc=0)
+            metrics = Metrics(self.target_columns, train_actual, val_actual, cc=0)
             trainingLoop = TrainingLoop(self.device, net, optimizer, criterion, metrics)
             
-            trainer = (name, metrics, trainingLoop)
+            trainer = (name, train_actual, val_actual, train_loader, val_loader, metrics, trainingLoop)
         
             self.trainers.append(trainer)
 
     def train(self):
         for trainer in self.trainers:
             gc.collect
-            name, metrics, trainingLoop = trainer
+            name, train_actual, val_actual, train_loader, val_loader, metrics, trainingLoop = trainer
             print(u"\u2586" * 30 + '\n')
             print(name + '\n')
             print(u"\u2585" * 30)
-            trainingLoop.train(self.num_epochs, self.train_loader, self.val_loader)
+        
+            print(f'Number of Training Images: {len(train_actual):,}')
+            print(f'Number of Validation Images: {len(val_actual):,}')
+        
+            trainingLoop.train(self.num_epochs, train_loader, val_loader)
             metrics.displayMetrics(*self.epoch_metric_display_args)
+            
             del trainingLoop
             del metrics
+            
             print('\n' * 5)
 
 

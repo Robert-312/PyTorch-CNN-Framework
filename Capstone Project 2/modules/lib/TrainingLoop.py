@@ -122,6 +122,7 @@ class TrainingLoop():
 
             # stdout Results
             print(f'Epoch Loss: {self.epoch_loss:.4f} \
+        \nTime of Completion: {datetime.now()}  \
         \nTraining Time: {training_time_elapsed}  \
         \nValidation Time: {validation_time_elapsed}')
 

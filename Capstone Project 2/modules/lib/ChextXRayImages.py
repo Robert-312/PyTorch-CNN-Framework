@@ -406,12 +406,36 @@ class Loaders():
     
     '''
     
-    def __init__(self):
+    def __init__(self, 
+                 image_width=320,
+                 image_height=320,
+                 affineDegrees=5, 
+                 translatePrecent=0.05, 
+                 shearDegrees=4, 
+                 brightnessJitter=0.2, 
+                 contrastJitter=0.1, 
+                 augPercent=0.2,
+                 observation_min_count = None):
             
-        self.image_width = 320
-        self.image_height = 320
+
+        self.cleanMetaData = CleanMetaData()    
+        
+        self.feature_columns = self.cleanMetaData.feature_columns
+        self.meta_columns = self.cleanMetaData.meta_columns
+        self.target_columns = self.cleanMetaData.target_columns
+            
         self.pixel_mean = 0.5064167
         self.pixel_sd = 0.16673872
+        
+        self.image_width = image_width
+        self.image_height = image_height
+        
+        self.translatePrecent=translatePrecent
+        self.shearDegrees=shearDegrees
+        self.brightnessJitter=brightnessJitter
+        self.contrastJitter=contrastJitter
+        self.augPercent=augPercent
+        self.observation_min_count=observation_min_count
         
         self.train_transform = None
         self.val_transform = None
@@ -420,25 +444,75 @@ class Loaders():
         self.train_df = None
         self.val_df = None
         
-        self.feature_columns = None
-        self.meta_columns = None
-        self.target_columns = None
+    def oversampleDF(self, df, observation_min_count = 50):
+        df_combined = pd.DataFrame(df.index) #builds a new df with the same index as df (same row count)
+        total_rows = df_combined.shape[0]
+
+        # Let's do this via concatenation instead of a groupby
+        # This give us an easier way to see the combination without spaning multiple columns
+        df_combined['Combined_Targets'] = ''
+        for c in self.target_columns:
+            df_combined['Combined_Targets'] = df_combined['Combined_Targets'] + df[c].map({-1:'N', 0:'0', 1:'P'})
+
+        # Now do the groupby on the concatenated column
+        # Remember, df_combined has the same cardinality as the passed in df
+        df_combinations = pd.DataFrame(df_combined.groupby(['Combined_Targets']).count())
+        df_combinations.columns = ['Observations']
+
+        # We only want the combinations that have less rows than the threshold
+        df_combinations_und = df_combinations[df_combinations.Observations < observation_min_count].copy()
+        df_combinations_und['AddCount'] = (observation_min_count - df_combinations_und.Observations).astype('int')
+
+        # Use above result to filter passed in df
+        df_in = df.copy()
+        df_in['Combined_Targets'] = df_combined['Combined_Targets'].copy()
+        df_underrep = df_in[df_in.Combined_Targets.isin(df_combinations_und.index)].copy()
+
+        # Let's leave the passed in df alone so we do a copy
+        df_oversample = df.copy()
+        df_dup_rows = df.iloc[0:0,:].copy()
+
+        # Walk every combination with a deficit
+        # Randomly pick rows with the same combination
+        # Insert these random rows to fill in deficit
+        combinations_with_deficit = df_combinations_und[df_combinations_und.AddCount>0].AddCount
+        for combination, add_count in combinations_with_deficit.items():
+            rows_to_copy = df_underrep[df_underrep.Combined_Targets==combination] \
+                            .sample(add_count, replace=True).copy()
+            df_dup_rows = df_dup_rows.append(rows_to_copy.copy(), sort=False)
+
+        # We need to unique index for these rows
+        # Let's make them negative so that we know they are oversample rows
+        dup_row_count = len(df_dup_rows)
+        new_index_values = np.linspace(1, dup_row_count, dup_row_count) * -1
+        df_dup_rows.index = new_index_values
+
+        # Append the dup rows into the oversample df
+        df_oversample = df_oversample.append(df_dup_rows, sort=False)
+        df_oversample = df_oversample.sort_index()
+
+        return (df_oversample, len(df_dup_rows))       
         
     def getTransformations(self, tranformType=TranformType.No):
         
         if tranformType == TranformType.Train:
             if not self.train_transform:
+                affineTrans = transforms.RandomApply(
+                                        [transforms.RandomAffine(degrees=5, 
+                                                                 translate=(self.translatePrecent,self.translatePrecent), 
+                                                                 shear=self.shearDegrees)],
+                                        p=self.augPercent)
+                brightnessContrastTrans = transforms.RandomApply(
+                                        [transforms.ColorJitter(brightness=self.brightnessJitter, 
+                                                                contrast=self.contrastJitter)],
+                                        p=self.augPercent)
                 self.train_transform = transforms.Compose(
-                                      [transforms.RandomAffine(degrees=3, translate=(.03,.03), shear=3),
+                                      [affineTrans,
+                                      brightnessContrastTrans,
                                       transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
                                       transforms.Grayscale(1),
                                       transforms.ToTensor(),
-                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])
-#                 self.train_transform = transforms.Compose(
-#                                       [transforms.Resize(size=(self.image_height,self.image_width), interpolation=2),
-#                                       transforms.Grayscale(1),
-#                                       transforms.ToTensor(),
-#                                       transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])                
+                                      transforms.Normalize((self.pixel_mean,), (self.pixel_sd,))])              
             return self.train_transform
         elif tranformType == TranformType.Val:
             if not self.val_transform:
@@ -453,9 +527,15 @@ class Loaders():
     
            
     def getDataSet(self, n_random_rows = 0, tranformType=TranformType.No):
-        md = CleanMetaData()
+        md = self.cleanMetaData
         
         self.df = md.getCleanDF(n_random_rows)
+        
+        if self.observation_min_count is not None:
+            self.df, total_rows_added = self.oversampleDF(self.df, 
+                                                          observation_min_count=self.observation_min_count)
+            print(f'Total Oversampled Rows Added: {total_rows_added:,}\n')
+            
         self.feature_columns = md.feature_columns
         self.meta_columns = md.meta_columns
         self.target_columns = md.target_columns
@@ -468,13 +548,16 @@ class Loaders():
         return torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True)
     
     def getTranValDataFrames(self, val_percent, n_random_rows = 0):
-        md = CleanMetaData()   
+        md = self.cleanMetaData 
         
-        self.feature_columns = md.feature_columns
-        self.meta_columns = md.meta_columns
-        self.target_columns = md.target_columns
+        df_train, df_val = md.getCleanDF(n_random_rows=n_random_rows, val_percent=val_percent)
         
-        return md.getCleanDF(n_random_rows=n_random_rows, val_percent=val_percent)
+        if self.observation_min_count is not None:
+            df_train, total_rows_added = self.oversampleDF(df_train, 
+                                                          observation_min_count=self.observation_min_count)
+            print(f'Total Oversampled Rows Added to Train: {total_rows_added:,}\n')
+            
+        return (df_train, df_val)
     
     def getTrainValDataSets(self, val_percent, n_random_rows = 0):
         self.train_df, self.val_df = self.getTranValDataFrames(val_percent, n_random_rows)
