@@ -6,6 +6,7 @@ from modules.lib.Metrics import *
 from modules.lib.TrainingLoop import *
 
 import torch
+import torch.utils.data
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
@@ -23,7 +24,7 @@ class StandardTraining():
                          device, 
                          net,
                          epoch_args='standard',
-                         use_positivity_weights=True, 
+                         use_positivity_weights=False, 
                          image_width = 320,
                          image_height = 320,
                          affineDegrees=5, 
@@ -71,14 +72,16 @@ class StandardTraining():
             df_positivity = self.train_actual[self.target_columns]
             positivity_weights = df_positivity[df_positivity!=1].count(axis=0) 
             positivity_weights = positivity_weights / df_positivity.sum(axis=0)
-            print("\n\Positive Weights used in BCEWithLogitsLoss:")
+                
+            print("\nPositive Weights used in BCEWithLogitsLoss:")
             display(positivity_weights)
-            pos_weight = torch.tensor(positivity_weights.values)
+
+            pos_weight = torch.Tensor(positivity_weights.values)
+            pos_weight = pos_weight.to(self.device)
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             self.criterion = nn.BCEWithLogitsLoss()
         
-        self.criterion = nn.BCEWithLogitsLoss()
         self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate)
         
         self.metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, cc=0)
@@ -109,9 +112,9 @@ class ModelLoop():
     docstring
     """
     
-    def getConfigObject(name, net, learning_rate=None, batch_size=None, observation_min_count=None):
-        config = namedtuple("NetConfig", "name net learning_rate batch_size observation_min_count")
-        return config(name, net, learning_rate, batch_size, observation_min_count)
+    def getConfigObject(name, net, learning_rate=None, batch_size=None, use_positivity_weights=False, observation_min_count=None):
+        config = namedtuple("NetConfig", "name net learning_rate batch_size use_positivity_weights observation_min_count")
+        return config(name, net, learning_rate, batch_size, use_positivity_weights, observation_min_count)
         
     
     def __init__(self,   number_images, 
@@ -150,6 +153,9 @@ class ModelLoop():
             if i >= len(nets): 
                     break
             name, net, lr, bs = config.name, config.net, config.learning_rate, config.batch_size
+            use_positivity_weights, observation_min_count = config.use_positivity_weights, config.observation_min_count
+            
+            self.loaders.observation_min_count = observation_min_count
             
             if lr==0:
                 lr = self.default_batch_size
@@ -164,7 +170,20 @@ class ModelLoop():
             train_actual = self.loaders.train_df
             val_actual = self.loaders.val_df
             
-            criterion = nn.BCEWithLogitsLoss()
+            if use_positivity_weights:
+                df_positivity = train_actual[self.target_columns]
+                positivity_weights = df_positivity[df_positivity!=1].count(axis=0) 
+                positivity_weights = positivity_weights / df_positivity.sum(axis=0)
+                
+                print("\nPositive Weights used in BCEWithLogitsLoss:")
+                display(positivity_weights)
+                
+                pos_weight = torch.tensor(positivity_weights.values)
+                pos_weight = pos_weight.to(self.device)
+                criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            else:
+                criterion = nn.BCEWithLogitsLoss()
+                
             optimizer = optim.Adam(net.parameters(), lr=lr)   
             
             metrics = Metrics(self.target_columns, train_actual, val_actual, cc=0)
