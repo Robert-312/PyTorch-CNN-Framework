@@ -33,7 +33,8 @@ class StandardTraining():
                          brightnessJitter=0.2, 
                          contrastJitter=0.1, 
                          augPercent=0.2,
-                         observation_min_count = None):
+                         observation_min_count=None,
+                         l2_reg=0):
         
         self.number_images = number_images
         self.batch_size=batch_size
@@ -82,7 +83,7 @@ class StandardTraining():
         else:
             self.criterion = nn.BCEWithLogitsLoss()
         
-        self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate, weight_decay=l2_reg)
         
         self.metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, cc=0)
         self.trainingLoop = TrainingLoop(self.device, self.net, self.optimizer, self.criterion, self.metrics)
@@ -112,9 +113,16 @@ class ModelLoop():
     docstring
     """
     
-    def getConfigObject(name, net, learning_rate=None, batch_size=None, use_positivity_weights=False, observation_min_count=None):
-        config = namedtuple("NetConfig", "name net learning_rate batch_size use_positivity_weights observation_min_count")
-        return config(name, net, learning_rate, batch_size, use_positivity_weights, observation_min_count)
+    def getConfigObject(name, 
+                        net, 
+                        learning_rate=None, 
+                        batch_size=None, 
+                        use_positivity_weights=False, 
+                        observation_min_count=None,
+                        l2_reg=0):
+        
+        config = namedtuple("NetConfig", "name net learning_rate batch_size use_positivity_weights observation_min_count l2_reg")
+        return config(name, net, learning_rate, batch_size, use_positivity_weights, observation_min_count, l2_reg)
         
     
     def __init__(self,   number_images, 
@@ -154,6 +162,7 @@ class ModelLoop():
                     break
             name, net, lr, bs = config.name, config.net, config.learning_rate, config.batch_size
             use_positivity_weights, observation_min_count = config.use_positivity_weights, config.observation_min_count
+            l2_reg = config.l2_reg
             
             self.loaders.observation_min_count = observation_min_count
             
@@ -184,7 +193,7 @@ class ModelLoop():
             else:
                 criterion = nn.BCEWithLogitsLoss()
                 
-            optimizer = optim.Adam(net.parameters(), lr=lr)   
+            optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=l2_reg)   
             
             metrics = Metrics(self.target_columns, train_actual, val_actual, cc=0)
             trainingLoop = TrainingLoop(self.device, net, optimizer, criterion, metrics)
