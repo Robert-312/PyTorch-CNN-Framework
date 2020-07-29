@@ -123,8 +123,8 @@ class TrainingLoop():
             # stdout Results
             print(f'Epoch Loss: {self.epoch_loss:.4f} \
         \nTime of Completion: {datetime.now()}  \
-        \nTraining Time: {training_time_elapsed}  \
-        \nValidation Time: {validation_time_elapsed}')
+        \nTraining Duration: {training_time_elapsed}  \
+        \nValidation Duration: {validation_time_elapsed}')
 
             # Show metrics display (optional)
             if self.epoch_metric_display_args is not None:

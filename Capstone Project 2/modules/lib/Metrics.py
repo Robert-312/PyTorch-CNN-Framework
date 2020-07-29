@@ -95,9 +95,6 @@ class Metrics():
         probabilities, predictions = self.getPredictionsFromOutput(outputs)        
 
         if is_validation:
-            self.epoch_val_probabilities = self.epoch_val_probabilities
-            self.epoch_val_predictions = self.epoch_val_predictions
-            
             self.updateProbabilities(self.epoch_val_probabilities, ids, probabilities)
             self.updatePredictions(self.epoch_val_predictions, ids, predictions)
         else:
@@ -121,19 +118,19 @@ class Metrics():
         
         if is_validation:
             self.df_val_prediction = self.getPredictionDataFrame(self.epoch_val_predictions)
-            self.val_prediction_hx[epochNumber] = self.df_val_prediction
+            self.val_prediction_hx[epochNumber] = self.df_val_prediction.copy()
             self.epoch_val_predictions = {}
 
             self.df_val_probability = self.getProbilityDataFrame(self.epoch_val_probabilities)
-            self.val_probability_hx[epochNumber] = self.df_val_probability
+            self.val_probability_hx[epochNumber] = self.df_val_probability.copy()
             self.epoch_val_probabilities = {}
         else:
             self.df_train_prediction = self.getPredictionDataFrame(self.epoch_train_predictions)
-            self.train_prediction_hx[epochNumber] = self.df_train_prediction
+            self.train_prediction_hx[epochNumber] = self.df_train_prediction.copy()
             self.epoch_train_predictions = {}
 
             self.df_train_probability = self.getProbilityDataFrame(self.epoch_train_probabilities)
-            self.train_probability_hx[epochNumber] = self.df_train_probability
+            self.train_probability_hx[epochNumber] = self.df_train_probability.copy()
             self.epoch_train_probabilities = {}
         
 # DISPLAY        
@@ -388,4 +385,237 @@ class Metrics():
             if showPrecisionRecallCurves:
                 print('*' * scc + ' Precision / Recall ' + '*' * scc)
                 self.plotPrecisionRecall(target_columns, y_val_true, y_val_prob, include_targets=include_targets,
-                        cols=gridSpecColumnCount, height=gridSpecHeight, width=gridSpecWidth)            
+                        cols=gridSpecColumnCount, height=gridSpecHeight, width=gridSpecWidth)     
+                
+                
+                
+
+            
+    def plotEpochAccuracy(self, train_pred_hx, val_pred_hx, 
+                             train_y_true, val_y_true, 
+                             include_targets=None, height=4, width=12):
+        """
+        docstring
+        """
+        
+        target_columns = self.target_columns
+        target_count = len(target_columns)
+        
+        if include_targets is None:
+            include_targets = target_columns
+            
+        epochs = [e+1 for e in self.val_prediction_hx.keys()] #1 based for display
+        
+        train_epoch_score = {}
+        val_epoch_score = {}
+        for target_id in range(target_count):
+            for epochNumber in epochs:
+                #train
+                train_epoch_pred = train_pred_hx[epochNumber-1].to_numpy()[:,target_id]
+                target_train_y_true = train_y_true[:,target_id]
+                if not epochNumber in train_epoch_score:
+                    train_epoch_score[epochNumber] = []
+                train_epoch_score[epochNumber].append(metrics.accuracy_score(y_true=target_train_y_true, y_pred=train_epoch_pred))
+                #train
+                val_epoch_pred = val_pred_hx[epochNumber-1].to_numpy()[:,target_id]
+                target_val_y_true = val_y_true[:,target_id]
+                if not epochNumber in val_epoch_score:
+                    val_epoch_score[epochNumber] = []
+                val_epoch_score[epochNumber].append(metrics.accuracy_score(y_true=target_val_y_true, y_pred=val_epoch_pred))
+
+        df_train = pd.DataFrame(train_epoch_score)
+        df_train.index = target_columns
+
+        df_val = pd.DataFrame(val_epoch_score)
+        df_val.index = target_columns
+
+        f = plt.figure(figsize=(width, height))
+        gs = f.add_gridspec(1, 2)
+        for i in range(2):
+
+            ax = f.add_subplot(gs[i])
+            if i == 0:
+                df_train.transpose()[include_targets].plot(ax=ax)
+                ax.get_legend().remove()
+                ax.set_title(f'Train')
+            else:
+                df_val.transpose()[include_targets].plot(ax=ax)
+                ax.legend(bbox_to_anchor=(1.04, 1), loc='upper left')
+                ax.set_title(f'Validation')
+
+            ax.set_xlabel('Epoch')
+            ax.set_ylabel('Accuracy')
+            ax.set_xticks(epochs)
+            
+        plt.show()                  
+                
+                
+    def plotEpochProgression(self, train_score_hx, val_score_hx, 
+                             train_y_true, val_y_true, 
+                             score_function, score_name, is_prob=False,
+                             include_targets=None, height=4, width=12):
+        """
+        docstring
+        """
+        
+        target_columns = self.target_columns
+        
+        if include_targets is None:
+            include_targets = target_columns
+            
+        epochs = [e+1 for e in self.val_prediction_hx.keys()] #1 based for display 
+        
+        train_epoch_score = {}
+        val_epoch_score = {}
+        for epochNumber in epochs:
+            if is_prob:
+                #train
+                train_epoch_prob = train_score_hx[epochNumber-1].to_numpy()
+                train_epoch_score[epochNumber] = score_function(y_true=train_y_true, y_score=train_epoch_prob, 
+                                                                average=None)
+                #train
+                val_epoch_prob = val_score_hx[epochNumber-1].to_numpy()
+                val_epoch_score[epochNumber] = score_function(y_true=val_y_true, y_score=val_epoch_prob, 
+                                                              average=None)
+            else:
+                #train
+                train_epoch_pred = train_score_hx[epochNumber-1].to_numpy()
+                train_epoch_score[epochNumber] = score_function(y_true=train_y_true, y_pred=train_epoch_pred, 
+                                                                average=None, zero_division=0)
+                #train
+                val_epoch_pred = val_score_hx[epochNumber-1].to_numpy()
+                val_epoch_score[epochNumber] = score_function(y_true=val_y_true, y_pred=val_epoch_pred, 
+                                                              average=None, zero_division=0)
+
+        df_train = pd.DataFrame(train_epoch_score)
+        df_train.index = target_columns
+
+        df_val = pd.DataFrame(val_epoch_score)
+        df_val.index = target_columns
+
+        f = plt.figure(figsize=(width, height))
+        gs = f.add_gridspec(1, 2)
+        for i in range(2):
+
+            ax = f.add_subplot(gs[i])
+            if i == 0:
+                df_train.transpose()[include_targets].plot(ax=ax)
+                ax.get_legend().remove()
+                ax.set_title(f'Train')
+            else:
+                df_val.transpose()[include_targets].plot(ax=ax)
+                ax.legend(bbox_to_anchor=(1.04, 1), loc='upper left')
+                ax.set_title(f'Validation')
+
+            ax.set_xlabel('Epoch')
+            ax.set_ylabel(score_name)
+            ax.set_xticks(epochs)
+            
+        plt.show()  
+            
+    def displayEpochProgression(self, 
+                                showResultDataFrames=False,
+                                showAccuracyProgression=True,
+                                showRecallProgression=True,
+                                showPrecisionProgression=True,
+                                showF1Progression=True,
+                                showROCAUCProgression=True,
+                                showAvgPrecisionProgression=True,
+                                include_targets=None):
+        """
+        docstring
+        """
+
+        target_columns = self.target_columns
+        train_actual = self.train_actual
+        val_actual = self.val_actual
+
+        df_train_prediction = self.df_train_prediction
+        df_train_probability = self.df_train_probability
+
+        df_val_prediction = self.df_val_prediction
+        df_val_probability = self.df_val_probability
+
+        y_train_true = None
+        y_train_pred = None
+        y_train_prob = None
+
+        y_val_true = None
+        y_val_pred = None
+        y_val_prob = None
+
+        cc = self.cc # repeat character count
+        scc = self.scc # short repeat character count
+
+
+        y_train_true = train_actual[target_columns].to_numpy()
+        y_train_pred = df_train_prediction.to_numpy()
+        y_train_prob = df_train_probability.to_numpy()
+
+        y_val_true = val_actual[target_columns].to_numpy()
+        y_val_pred = df_val_prediction.to_numpy()
+        y_val_prob = df_val_probability.to_numpy()
+                
+        if showResultDataFrames:
+            print('=' * cc + '\nTRAIN FINAL RESULTS\n' + '=' * cc)
+            print(u"\u2594" * 8)
+            display(train_actual[target_columns]) 
+            display(df_train_prediction) 
+            display(df_train_probability) 
+            print('=' * cc + '\nVALIDATION FINAL RESULTS\n' + '=' * cc)
+            print(u"\u2594" * 8)
+            display(val_actual[target_columns]) 
+            display(df_val_prediction) 
+            display(df_val_probability) 
+                
+        if showAccuracyProgression:
+            print('=' * cc + '\nACCURACY\n' + '=' * cc)
+            print(u"\u2594" * 4)
+            self.plotEpochAccuracy(self.train_prediction_hx, self.val_prediction_hx, 
+                                      y_train_true, y_val_true, 
+                                      include_targets=include_targets)   
+                
+        if showRecallProgression:
+            print('=' * cc + '\nRECALL\n' + '=' * cc)
+            print(u"\u2594" * 3)
+            self.plotEpochProgression(self.train_prediction_hx, self.val_prediction_hx, 
+                                      y_train_true, y_val_true, 
+                                      metrics.recall_score, 'Recall',
+                                      include_targets=include_targets)   
+                
+        if showPrecisionProgression:
+            print('=' * cc + '\nPRECISION\n' + '=' * cc)
+            print(u"\u2594" * 6)
+            self.plotEpochProgression(self.train_prediction_hx, self.val_prediction_hx, 
+                                      y_train_true, y_val_true, 
+                                      metrics.precision_score, 'Precision',
+                                      include_targets=include_targets)     
+                
+        if showF1Progression:
+            print('=' * cc + '\nF1\n' + '=' * cc)
+            print(u"\u2594" * 1)
+            self.plotEpochProgression(self.train_prediction_hx, self.val_prediction_hx, 
+                                      y_train_true, y_val_true, 
+                                      metrics.f1_score, 'F1',
+                                      include_targets=include_targets)       
+                
+        if showROCAUCProgression:
+            print('=' * cc + '\nROC AUC\n' + '=' * cc)
+            print(u"\u2594" * 4)
+            self.plotEpochProgression(self.train_probability_hx, self.val_probability_hx, 
+                                      y_train_true, y_val_true, 
+                                      metrics.roc_auc_score, 'ROC AUC', is_prob=True,
+                                      include_targets=include_targets)          
+                
+        if showAvgPrecisionProgression:
+            print('=' * cc + '\nAVERAGE PRECISION\n' + '=' * cc)
+            print(u"\u2594" * 8)
+            self.plotEpochProgression(self.train_probability_hx, self.val_probability_hx, 
+                                      y_train_true, y_val_true, 
+                                      metrics.average_precision_score, 'Average Precision', is_prob=True,
+                                      include_targets=include_targets)         
+
+
+
+
+

@@ -34,7 +34,8 @@ class StandardTraining():
                          contrastJitter=0.1, 
                          augPercent=0.2,
                          observation_min_count=None,
-                         l2_reg=0):
+                         l2_reg=0,
+                         loss_reduction='mean'):
         
         self.number_images = number_images
         self.batch_size=batch_size
@@ -44,6 +45,8 @@ class StandardTraining():
         self.net = net
         
         self.num_epochs = num_epochs
+        
+        self.total_training_time_elapsed  = None
         
 
         self.loaders = Loaders(  image_width = image_width,
@@ -79,9 +82,9 @@ class StandardTraining():
 
             pos_weight = torch.Tensor(positivity_weights.values)
             pos_weight = pos_weight.to(self.device)
-            self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight, reduction=loss_reduction)
         else:
-            self.criterion = nn.BCEWithLogitsLoss()
+            self.criterion = nn.BCEWithLogitsLoss(reduction=loss_reduction)
         
         self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate, weight_decay=l2_reg)
         
@@ -93,7 +96,7 @@ class StandardTraining():
                                                   False, 
                                                   True, 
                                                   False, 
-                                                  False,  
+                                                  False,
                                                   ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
         elif epoch_args is not None:
             self.trainingLoop.epoch_metric_display_args = epoch_args
@@ -102,10 +105,16 @@ class StandardTraining():
             
             
     def train(self):
+        start_time = datetime.now()
         self.trainingLoop.train(self.num_epochs, self.train_loader, self.val_loader)
+        self.total_training_time_elapsed = datetime.now() - start_time
+        print(f'Training Duration: {self.total_training_time_elapsed }')
         
     def displayMetrics(self):
         self.metrics.displayMetrics()
+        
+    def displayEpochProgression(self):
+        self.metrics.displayEpochProgression(include_targets = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
                 
 class ModelLoop():
     

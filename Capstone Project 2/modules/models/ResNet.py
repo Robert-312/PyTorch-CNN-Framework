@@ -32,7 +32,8 @@ class ResNet_GrayScale_12_Out(nn.Module):
         self.model.conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         
         if drop_out_precent is not None:
-            self.model.fc.register_forward_hook(lambda m, inp, out: F.dropout(out, p=drop_out_precent, training=m.training))
+            self.dropout2d = nn.Dropout2d(p=drop_out_precent)
+            self.model.fc.register_forward_hook(lambda m, inp, out: self.dropout2d(out))
 
         self.final_fc = nn.Linear(1000, 12)
 
