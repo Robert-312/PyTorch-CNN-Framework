@@ -4,14 +4,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
-class ResNet_GrayScale_12_Out(nn.Module):
+class ResNet_GrayScale(nn.Module):
     
     """
     docstring
     """
 
-    def __init__(self,  layers= 18, in_channels=1, drop_out_precent=None):
-        super(ResNet_GrayScale_12_Out, self).__init__()
+    def __init__(self,  layers= 18, in_channels=1, out_channels=12, drop_out_precent=None):
+        super(ResNet_GrayScale, self).__init__()
 
         # bring resnet
         if layers==18:
@@ -35,13 +35,13 @@ class ResNet_GrayScale_12_Out(nn.Module):
             self.dropout2d = nn.Dropout2d(p=drop_out_precent)
             self.model.fc.register_forward_hook(lambda m, inp, out: self.dropout2d(out))
 
-        self.final_fc = nn.Linear(1000, 12)
+        self.final_fc = nn.Linear(1000, out_channels)
 
     def forward(self, x):
         x = self.model(x)
         return self.final_fc(x)
     
-class ResNet_PreTrained_12_Out(nn.Module):
+class ResNet_PreTrained(nn.Module):
     
     """
     In order to use pretrained, we have to have 3 input channels.
@@ -52,8 +52,8 @@ class ResNet_PreTrained_12_Out(nn.Module):
     We do this on the forward using the repeat function.
     """
 
-    def __init__(self,  layers= 18, drop_out_precent=None):
-        super(ResNet_PreTrained_12_Out, self).__init__()
+    def __init__(self,  layers= 18, out_channels=12, drop_out_precent=None):
+        super(ResNet_PreTrained, self).__init__()
 
         # bring resnet
         if layers==18:
@@ -71,7 +71,7 @@ class ResNet_PreTrained_12_Out(nn.Module):
         if drop_out_precent is not None:
             self.model.fc.register_forward_hook(lambda m, inp, out: F.dropout(out, p=drop_out_precent, training=m.training))
 
-        self.final_fc = nn.Linear(1000, 12)
+        self.final_fc = nn.Linear(1000, out_channels)
 
     def forward(self, x):
         # Repeat the single channel 3 times to mimic RBG

@@ -1,5 +1,8 @@
 import gc
+import os
+import pandas as pd
 from collections import namedtuple
+import pickle 
 
 from modules.lib.ChextXRayImages import *
 from modules.lib.Metrics import *
@@ -35,7 +38,38 @@ class StandardTraining():
                          augPercent=0.2,
                          observation_min_count=None,
                          l2_reg=0,
-                         loss_reduction='mean'):
+                         loss_reduction='mean',
+                         target_columns=None,
+                         save_path=None,
+                         net_name=None,
+                         net_kwargs=None):
+        
+        net_kwargs_string = ''
+        if net_kwargs is not None:
+            net_kwargs_string = ','.join([str(k) + ':' + str(v) for k,v in net_kwargs.items()])
+        
+        self.run_parameters = {'number_images':number_images, 
+                           'batch_size':batch_size, 
+                           'learning_rate':learning_rate, 
+                           'num_epochs':num_epochs,
+                           'epoch_args':epoch_args,
+                           'use_positivity_weights':use_positivity_weights, 
+                           'image_width':image_width,
+                           'image_height':image_height,
+                           'affineDegrees':affineDegrees, 
+                           'translatePrecent':translatePrecent, 
+                           'shearDegrees':shearDegrees, 
+                           'brightnessJitter':brightnessJitter, 
+                           'contrastJitter':contrastJitter, 
+                           'augPercent':augPercent,
+                           'observation_min_count':observation_min_count,
+                           'l2_reg':l2_reg,
+                           'loss_reduction':loss_reduction,
+                           'target_columns':','.join(target_columns),
+                           'net_name':net_name,
+                           'net_kwargs':net_kwargs_string}
+        
+        self.save_path = save_path
         
         self.number_images = number_images
         self.batch_size=batch_size
@@ -57,7 +91,8 @@ class StandardTraining():
                                  brightnessJitter=brightnessJitter, 
                                  contrastJitter=contrastJitter, 
                                  augPercent=augPercent,
-                                 observation_min_count=observation_min_count)
+                                 observation_min_count=observation_min_count,
+                                 target_columns=target_columns)
 
         self.train_loader = None
         self.val_loader = None
@@ -114,7 +149,73 @@ class StandardTraining():
         self.metrics.displayMetrics()
         
     def displayEpochProgression(self):
-        self.metrics.displayEpochProgression(include_targets = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
+        self.metrics.displayEpochProgression(include_targets = 
+                                             ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
+        
+    def saveRunParameters(self):
+        path = os.path.join(self.save_path, 'RunParameters.pkl')
+        with open(path, 'wb') as filehandler:
+            pickle.dump(self.run_parameters, filehandler)        
+        
+    def saveMetrics(self):
+        path = os.path.join(self.save_path, 'Metrics.pkl')
+        with open(path, 'wb') as filehandler:
+            pickle.dump(self.metrics, filehandler)
+                
+    def saveNet(self):
+        path = os.path.join(self.save_path, 'Net.pkl')
+        with open(path, 'wb') as filehandler:
+            torch.save(self.net.state_dict(), filehandler)      
+                
+     
+    def save(self):
+        if self.save_path is not None:
+            if not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
+
+            try:
+                self.saveRunParameters()
+            except RuntimeError as err:
+                print('Save Run Parameters Error: ', err)
+
+            try:
+                self.saveMetrics()
+            except RuntimeError as err:
+                print('Save Metric Error: ', err)
+
+            try:
+                self.saveNet()
+            except RuntimeError as err:
+                print('Save Network Error: ', err)
+            
+    def displayRunParameters(dir):
+        if os.path.exists(dir):
+            path = os.path.join(dir, 'RunParameters.pkl')
+            with open(path, 'rb') as filehandler:
+                unpickler = pickle.Unpickler(filehandler)
+                run_parameters = unpickler.load()
+                
+                net_name = run_parameters.pop("net_name")
+                net_kwargs = run_parameters.pop("net_kwargs")
+                target_columns = run_parameters.pop("target_columns")
+
+                print('Network Name: ', net_name)
+                print('Nework Arguments: ', net_kwargs)
+                
+                display(pd.DataFrame(list(run_parameters.items()), columns=['Paramter', 'Value']))
+                print('Targets: ', target_columns)
+        else:
+            print('Directory does not exist')
+            
+    def loadMetrics(dir):
+        if os.path.exists(dir):
+            path = os.path.join(dir, 'Metrics.pkl')
+            with open(path, 'rb') as filehandler:
+                unpickler = pickle.Unpickler(filehandler)
+                metrics = unpickler.load()
+                return metrics
+        else:
+            print('Directory does not exist')
                 
 class ModelLoop():
     

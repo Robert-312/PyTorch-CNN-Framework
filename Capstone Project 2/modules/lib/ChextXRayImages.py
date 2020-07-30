@@ -42,7 +42,7 @@ class CleanMetaData():
     Note:  If you change code in this class, you should delete the file or you will simply reload the old DataFrame.
     '''
     
-    def __init__(self, binary_targets=True): 
+    def __init__(self, binary_targets=True, target_columns=None): 
         
         # Leave target as is [-1, 0, 1] or force it to be Boolean [0,1]
         self.binary_targets = binary_targets
@@ -71,19 +71,23 @@ class CleanMetaData():
                                 'Orientation_PA',
                                 'Support Devices']
         self.meta_columns = ['Image_Path', 'Hierarchical_Path']
-        self.target_columns = [ 'Enlarged_Cardiomediastinum',
-                                'Cardiomegaly',
-                                'Lung_Opacity',
-                                'Lung_Lesion',
-                                'Edema',
-                                'Consolidation',
-                                'Pneumonia',
-                                'Atelectasis',
-                                'Pneumothorax',
-                                'Pleural_Effusion',
-                                'Pleural_Other',
-                                'Fracture'
-                               ]
+        
+        if target_columns is None:
+            self.target_columns = [ 'Enlarged_Cardiomediastinum',
+                                    'Cardiomegaly',
+                                    'Lung_Opacity',
+                                    'Lung_Lesion',
+                                    'Edema',
+                                    'Consolidation',
+                                    'Pneumonia',
+                                    'Atelectasis',
+                                    'Pneumothorax',
+                                    'Pleural_Effusion',
+                                    'Pleural_Other',
+                                    'Fracture'
+                                   ]
+        else:
+            self.target_columns = target_columns
         
     def getPaths(self):
         
@@ -282,7 +286,7 @@ class Dataset(torch.utils.data.Dataset):
     Each DataFrame along with a transformation is used to create a seperate Dataset for train and val.
     '''
     
-    def __init__(self, df, transform=None):
+    def __init__(self, df, transform=None, target_columns=None):
 
         # initialize the arrays to store the ground truth labels and paths to the images
         self.ImageID = []
@@ -303,6 +307,8 @@ class Dataset(torch.utils.data.Dataset):
         self.transform = transform
         self.to_tensor = ToTensor()
         self.to_pil = ToPILImage()
+        
+        self.target_columns = target_columns
 
         # Load the image and lables for each row in the DataFrame
         for _, row in df.iterrows():
@@ -354,24 +360,52 @@ class Dataset(torch.utils.data.Dataset):
                 img = self.transform(img)
 
             # return the image and all the associated labels
+            if self.target_columns is None:
+                labels = [
+                            self.Enlarged_Cardiomediastinum[idx], #Enlarged_Cardiomediastinum
+                            self.Cardiomegaly[idx], #Cardiomegaly
+                            self.Lung_Opacity[idx], #Lung_Opacity
+                            self.Lung_Lesion[idx], #Lung_Lesion
+                            self.Edema[idx], #Edema
+                            self.Consolidation[idx], #Consolidation
+                            self.Pneumonia[idx], #Pneumonia
+                            self.Atelectasis[idx], #Atelectasis
+                            self.Pneumothorax[idx], #Pneumothorax
+                            self.Pleural_Effusion[idx], #Pleural_Effusion
+                            self.Pleural_Other[idx], #Pleural_Other
+                            self.Fracture[idx] #Fracture
+                          ]
+            else:
+                labels = []
+                if 'Enlarged_Cardiomediastinum' in self.target_columns:
+                    labels.append(self.Enlarged_Cardiomediastinum[idx])
+                if 'Cardiomegaly' in self.target_columns:
+                    labels.append(self.Cardiomegaly[idx])
+                if 'Lung_Opacity' in self.target_columns:
+                    labels.append(self.Lung_Opacity[idx])
+                if 'Lung_Lesion' in self.target_columns:
+                    labels.append(self.Lung_Lesion[idx])
+                if 'Edema' in self.target_columns:
+                    labels.append(self.Edema[idx])
+                if 'Consolidation' in self.target_columns:
+                    labels.append(self.Consolidation[idx])
+                if 'Pneumonia' in self.target_columns:
+                    labels.append(self.Pneumonia[idx])
+                if 'Atelectasis' in self.target_columns:
+                    labels.append(self.Atelectasis[idx])
+                if 'Pneumothorax' in self.target_columns:
+                    labels.append(self.Pneumothorax[idx])
+                if 'Pleural_Effusion' in self.target_columns:
+                    labels.append(self.Pleural_Effusion[idx])
+                if 'Pleural_Other' in self.target_columns:
+                    labels.append(self.Pleural_Other[idx])
+                if 'Fracture' in self.target_columns:
+                    labels.append(self.Fracture[idx])
+            
             result = {
                 'id': self.ImageID[idx],
                 'img': img,
-                'labels': torch.FloatTensor([
-                                            self.Enlarged_Cardiomediastinum[idx], #Enlarged_Cardiomediastinum
-                                            self.Cardiomegaly[idx], #Cardiomegaly
-                                            self.Lung_Opacity[idx], #Lung_Opacity
-                                            self.Lung_Lesion[idx], #Lung_Lesion
-                                            self.Edema[idx], #Edema
-                                            self.Consolidation[idx], #Consolidation
-                                            self.Pneumonia[idx], #Pneumonia
-                                            self.Atelectasis[idx], #Atelectasis
-                                            self.Pneumothorax[idx], #Pneumothorax
-                                            self.Pleural_Effusion[idx], #Pleural_Effusion
-                                            self.Pleural_Other[idx], #Pleural_Other
-                                            self.Fracture[idx] #Fracture
-                                            ])
-            }
+                'labels': torch.FloatTensor(labels)}
         return result            
 
 class TranformType(Enum):
@@ -415,10 +449,12 @@ class Loaders():
                  brightnessJitter=0.2, 
                  contrastJitter=0.1, 
                  augPercent=0.2,
-                 observation_min_count = None):
+                 observation_min_count = None,
+                 target_columns=None):
             
 
-        self.cleanMetaData = CleanMetaData()    
+        self.target_columns=target_columns
+        self.cleanMetaData = CleanMetaData(target_columns=self.target_columns)    
         
         self.feature_columns = self.cleanMetaData.feature_columns
         self.meta_columns = self.cleanMetaData.meta_columns
@@ -541,7 +577,7 @@ class Loaders():
         self.target_columns = md.target_columns
         
         transform = self.getTransformations(tranformType)
-        return Dataset(self.df, transform)
+        return Dataset(self.df, transform, target_columns=self.target_columns)
     
     def getDataLoader(self, batch_size=64, n_random_rows = 0, tranformType=TranformType.No):
         ds = self.getDataSet(n_random_rows, tranformType)
@@ -566,8 +602,8 @@ class Loaders():
         val_transform = self.getTransformations(TranformType.Val)
         
         return (
-                    Dataset(self.train_df, train_transform),
-                    Dataset(self.val_df, val_transform)
+                    Dataset(self.train_df, train_transform, target_columns=self.target_columns),
+                    Dataset(self.val_df, val_transform, target_columns=self.target_columns)
                 )
     
                 
