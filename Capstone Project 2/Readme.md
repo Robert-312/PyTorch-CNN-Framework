@@ -661,7 +661,7 @@ plt.show()
 ```
 
 
-![png](output_17_0.png)
+![png](Readme/Images/output_17_0.png)
 
 
 # Target Interdependence
@@ -679,7 +679,7 @@ plt.show()
 ```
 
 
-![png](output_19_0.png)
+![png](Readme/Images/output_19_0.png)
 
 
 # Imbalance
@@ -701,7 +701,7 @@ ax.grid()
 ```
 
 
-![png](output_21_0.png)
+![png](Readme/Images/output_21_0.png)
 
 
 # CheXpertData module (DataFrame, Dataset and DataLoaders)
@@ -1772,14 +1772,14 @@ metrics.displayMetrics()
     
 
 
-![png](output_38_4.png)
+![png](Readme/Images/output_38_4.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](output_38_6.png)
+![png](Readme/Images/output_38_6.png)
 
 
     
@@ -1930,14 +1930,14 @@ metrics.displayMetrics()
     
 
 
-![png](output_38_11.png)
+![png](Readme/Images/output_38_11.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](output_38_13.png)
+![png](Readme/Images/output_38_13.png)
 
 
 
@@ -1952,7 +1952,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_1.png)
+![png](Readme/Images/output_39_1.png)
 
 
     
@@ -1962,7 +1962,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_3.png)
+![png](Readme/Images/output_39_3.png)
 
 
     
@@ -1972,7 +1972,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_5.png)
+![png](Readme/Images/output_39_5.png)
 
 
     
@@ -1982,7 +1982,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_7.png)
+![png](Readme/Images/output_39_7.png)
 
 
     
@@ -1992,7 +1992,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_9.png)
+![png](Readme/Images/output_39_9.png)
 
 
     
@@ -2002,5 +2002,5 @@ metrics.displayEpochProgression()
     
 
 
-![png](output_39_11.png)
+![png](Readme/Images/output_39_11.png)
 
