@@ -1292,6 +1292,8 @@ The main purpose of the StandardTraining class is to allow repeatable model runs
 
 There are also some training values that are hard coded into the class.  For example, the loss function is always BCEWithLogitsLoss and the optimizer is always Adam.  You modify some parameters of these two functions, but you cannot change their type.
 
+!!!!!!!!!!!!!!!!!!update test!!!!!!!!!!!!!!!!
+
 ## Criterion (Loss Function)
 
 ## Optimizer
