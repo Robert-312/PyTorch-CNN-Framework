@@ -112,46 +112,46 @@ The images in this dataset cannot be made publically available.  Because of this
 # Project Directory Structure
 
 
-## data
+## <a href="data" >data</a>
 
-*   **Raw**
+*   **<a href="data/raw" >raw</a>**
     -   Holds metadata csv files from CheXpert
     -   Holds download x-ray images
 
-*    **intermediate**
+*    **<a href="data/intermediate" >intermediate</a>**
     -   Holds Clean DF
 
-*    **d0 through d49**
+*    **<a href="data/d0" >d0</a> through <a href="data/d49" >d49</a>**
     -   Holds same x-ray images, but in a hierarchical directory structure for CoLab
 
-## modules
+## <a href="modules" >modules</a>
 
-* **lib**
-    -   CheXpertData
+* **<a href="modules/lib" >lib</a>**
+    -   **<a href="modules/lib/CheXpertData.py" >CheXpertData.py</a>**
         * Clean Meta Data (DataFrame)
         * PyTorch DataSet (Subclass of torch.utils.data.Dataset)
         * PyTorch DataLoaders
-    -   Metrics
+    -   **<a href="modules/lib/Metrics.py" >Metrics.py</a>**
         * Holds results passed to it via training
         * Displays metrics of the run along with things like ROC curves
-    -   StandardTraining
+    -   **<a href="modules/lib/StandardTraining.py" >StandardTraining.py</a>**
         * Runs the training loop with overridable default parameters
         * Allow consistency between different run
         * ModelLoop class - Run multiple combinations of parameters in same notebook
-    -   TrainingLoop
+    -   **<a href="modules/lib/TrainingLoop.py" >TrainingLoop.py</a>**
         * Runs the training
         * Pass in, NN, cuda device, optimizer, loss function and Metrics class described above
 
-* **models**
-    -   CustomPneumonia
+* **<a href="modules/models" >models</a>**
+    -   **<a href="modules/models/CustomPneumonia.py" >CustomPneumonia.py</a>**
         * Custom build CNN model
         * Intended to be more educational rather than effective
         * Goal was to make sure:
             - Shapes match between each layer and between convolution and fully connected layers
             - Ability to calculate the number of trainable parameters
-    -   DenseNet
+    -   **<a href="modules/models/DenseNet.py" >DenseNet.py</a>**
         * A fairly standard structure of DenseNet (see below for more details)
-    -   ResNet
+    -   **<a href="modules/models/ResNet.py" >ResNet.py</a>**
         * ResNet_GrayScale
             - Uses torchvision.models.resnetXX models
             - Overrides conv1 to take in 1 input channel
@@ -164,30 +164,30 @@ The images in this dataset cannot be made publically available.  Because of this
             - Registers a forward hook to add dropout2d is drop_out_precent is passed in
             - Uses torch.repeat_interleave to duplicate the 1 grayscale channel to 3 channels
 
-## notebooks
--   **Educational** - Two notebooks exploring PyTorch functionality
-    * Pytorch Linear Regression from Scratch
-    * Pytorch Automatic Differentiation
--   **Kaggle Pneumonia**
+## <a href="notebooks" >notebooks</a>
+-   **<a href="notebooks/Educational" >Educational</a>** - Two notebooks exploring PyTorch functionality
+    * <a href="notebooks/Educational/Pytorch%20Linear%20Regression%20from%20Scratch.ipynb" >Pytorch Linear Regression from Scratch</a>
+    * <a href="notebooks/Educational/Pytorch%20Automatic%20Differentiation.ipynb" >Pytorch Automatic Differentiation</a>
+-   **<a href="notebooks/Kaggle%20Pneumonia" >Kaggle Pneumonia</a>**
     * Very early work with CNN on Kaggle Pneumonia chest x-rays
     * Basis of CustomPneumonia model
--   **ModelLoop**
+-   **<a href="notebooks/ModelLoop" >ModelLoop</a>**
     * Notebooks that run combinations of different modes and/or parameters with a reduced dataset
--   **ModelRuns**
+-   **<a href="notebooks/ModelRuns" >ModelRuns</a>**
     * Notebooks that train a single model and parameters
-    * **saved**
+    * **<a href="notebooks/ModelRuns/saved" >saved</a>**
         - Holds the pickle serialization of the model runs
--   **Support Notebooks for Modules**
+-   **<a href="notebooks/Support%20Notebooks%20for%20Modules" >Support Notebooks for Modules</a>**
     * The workspace used to help build the modules
-    * CheXpertData_NB
-    * EDA
-    * HierarchicalPath
-    * Metrics and Training Loop
-    * Metrics_NB
-    * ModelLoop_NB
-    * Oversampling
-    * StandardTraining_NB
-    * TrainingLoop_NB
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/CheXpertData_NB.ipynb" >CheXpertData_NB</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/EDA.ipynb" >EDA</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/HierarchicalPath.ipynb" >HierarchicalPath</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/Metrics%20and%20Training%20Loop.ipynb" >Metrics and Training Loop</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/Metrics_NB.ipynb" >Metrics_NB</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/ModelLoop_NB.ipynb" >ModelLoop_NB</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/Oversampling.ipynb" >Oversampling</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/StandardTraining_NB.ipynb" >StandardTraining_NB</a>
+    * <a href="notebooks/Support%20Notebooks%20for%20Modules/TrainingLoop_NB.ipynb" >TrainingLoop_NB</a>
 
 # ═══════════════════════════════════
 
@@ -267,7 +267,7 @@ To see the process of data cleaning, please go to the supporing notebook:
 <a href="notebooks/Support%20Notebooks%20for%20Modules/EDA.ipynb" >EDA Support Notebook</a>
 
 To see the module, please go to:
-<a href="modules/lib/ChextXRayImages.py" >ChextXRayImages</a>
+<a href="modules/lib/CheXpertData.py" >CheXpertData.py</a>
 
 ### Frontal only
 To reduce the complexity of learning and to reduce the overall number of images, only frontal views were included.  
@@ -661,7 +661,7 @@ plt.show()
 ```
 
 
-![png](Readme/Images/output_17_0.png)
+![png](Readme%20Images/output_17_0.png)
 
 
 # Target Interdependence
@@ -679,7 +679,7 @@ plt.show()
 ```
 
 
-![png](Readme/Images/output_19_0.png)
+![png](Readme%20Images/output_19_0.png)
 
 
 # Imbalance
@@ -701,7 +701,7 @@ ax.grid()
 ```
 
 
-![png](Readme/Images/output_21_0.png)
+![png](Readme%20Images/output_21_0.png)
 
 
 # CheXpertData module (DataFrame, Dataset and DataLoaders)
@@ -723,7 +723,7 @@ In addition to the data cleansing, the CleanMetaData class performs 2 critical f
         - If the difference in this percentage between train and val exceeds the default 2%, a warning is displayed
         - The warning lists all features that have an imbalance
         - This is often seen with very low row counts
-        - See bottom of EDA notebook: <a href="notebooks/Support%20Notebooks%20for%20Modules/EDA.ipynb" >EDA Support Notebook</a>
+        - See **Warnings** section of <a href="notebooks/Support%20Notebooks%20for%20Modules/EDA.ipynb#Warnings">EDA</a>:
 
 
 ### Dataset
@@ -1774,14 +1774,14 @@ metrics.displayMetrics()
     
 
 
-![png](Readme/Images/output_38_4.png)
+![png](Readme%20Images/output_38_4.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme/Images/output_38_6.png)
+![png](Readme%20Images/output_38_6.png)
 
 
     
@@ -1932,14 +1932,14 @@ metrics.displayMetrics()
     
 
 
-![png](Readme/Images/output_38_11.png)
+![png](Readme%20Images/output_38_11.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme/Images/output_38_13.png)
+![png](Readme%20Images/output_38_13.png)
 
 
 
@@ -1954,7 +1954,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_1.png)
+![png](Readme%20Images/output_39_1.png)
 
 
     
@@ -1964,7 +1964,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_3.png)
+![png](Readme%20Images/output_39_3.png)
 
 
     
@@ -1974,7 +1974,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_5.png)
+![png](Readme%20Images/output_39_5.png)
 
 
     
@@ -1984,7 +1984,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_7.png)
+![png](Readme%20Images/output_39_7.png)
 
 
     
@@ -1994,7 +1994,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_9.png)
+![png](Readme%20Images/output_39_9.png)
 
 
     
@@ -2004,5 +2004,5 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme/Images/output_39_11.png)
+![png](Readme%20Images/output_39_11.png)
 
