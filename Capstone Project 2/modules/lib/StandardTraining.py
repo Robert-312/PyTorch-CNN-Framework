@@ -4,7 +4,7 @@ import pandas as pd
 from collections import namedtuple
 import pickle 
 
-from modules.lib.ChextXRayImages import *
+from modules.lib.CheXpertData import *
 from modules.lib.Metrics import *
 from modules.lib.TrainingLoop import *
 
@@ -40,10 +40,19 @@ class StandardTraining():
                          l2_reg=0,
                          loss_reduction='mean',
                          target_columns=None,
+                         target_thresholds=None,
                          save_path=None,
                          net_name=None,
                          net_kwargs=None):
         
+        target_columns_string = ''
+        if target_columns is not None:
+            target_columns_string = ','.join(target_columns)
+        
+        target_thresholds_string = ''
+        if target_thresholds is not None:
+            target_thresholds_string = ','.join([str(st) for st in target_thresholds])
+            
         net_kwargs_string = ''
         if net_kwargs is not None:
             net_kwargs_string = ','.join([str(k) + ':' + str(v) for k,v in net_kwargs.items()])
@@ -65,7 +74,8 @@ class StandardTraining():
                            'observation_min_count':observation_min_count,
                            'l2_reg':l2_reg,
                            'loss_reduction':loss_reduction,
-                           'target_columns':','.join(target_columns),
+                           'target_columns':target_columns_string,
+                           'target_thresholds':target_thresholds_string,
                            'net_name':net_name,
                            'net_kwargs':net_kwargs_string}
         
@@ -123,16 +133,22 @@ class StandardTraining():
         
         self.optimizer = optim.Adam(net.parameters(), lr=self.learning_rate, weight_decay=l2_reg)
         
-        self.metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, cc=0)
+        self.metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, target_thresholds=target_thresholds, cc=0)
         self.trainingLoop = TrainingLoop(self.device, self.net, self.optimizer, self.criterion, self.metrics)
         
+        display_columns = target_columns.copy()
+        if len(target_columns) == 12: #all targets
+            display_columns = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion']
+        
         if epoch_args=='standard':
-            self.trainingLoop.epoch_metric_display_args = (0, 
-                                                  False, 
-                                                  True, 
-                                                  False, 
-                                                  False,
-                                                  ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
+            self.trainingLoop.epoch_metric_display_args = {
+                                                              'metricDataSource':0, 
+                                                              'showCombinedMetrics':False, 
+                                                              'showMetricDataFrame':True, 
+                                                              'showROCCurves':False, 
+                                                              'showPrecisionRecallCurves':False,
+                                                              'include_targets':display_columns
+                                                          }
         elif epoch_args is not None:
             self.trainingLoop.epoch_metric_display_args = epoch_args
         else:
@@ -149,8 +165,7 @@ class StandardTraining():
         self.metrics.displayMetrics()
         
     def displayEpochProgression(self):
-        self.metrics.displayEpochProgression(include_targets = 
-                                             ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion'])
+        self.metrics.displayEpochProgression(include_targets = display_columns)
         
     def saveRunParameters(self):
         path = os.path.join(self.save_path, 'RunParameters.pkl')

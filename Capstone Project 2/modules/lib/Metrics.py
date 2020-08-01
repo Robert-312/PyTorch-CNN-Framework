@@ -19,10 +19,20 @@ class Metrics():
     docstring
     """
     
-    def __init__(self, target_columns, train_actual, val_actual, cc=10, scc=5):
+    def __init__(self, target_columns, train_actual, val_actual, target_thresholds=None, cc=10, scc=5):
         self.target_columns = target_columns
         self.train_actual = train_actual
         self.val_actual = val_actual
+        
+        if target_thresholds is None:
+            #Default thresholds for all targets is .5
+            self.target_thresholds = np.ones(len(self.target_columns)) * .5
+        else:
+            #Custom Thresholds
+            #i.e. set Edema threshold to .2.  If Edema probability >= .2, prediction = 1
+            self.target_thresholds = target_thresholds
+            
+        self.target_thresholds = torch.tensor(self.target_thresholds)
         
         self.cc = cc
         self.scc = scc
@@ -51,7 +61,7 @@ class Metrics():
         
     def getPredictionsFromOutput(self, outputs):
         """
-        We are using BCEWithLogitsLoss for out loss
+        We are using BCEWithLogitsLoss for our loss
         In this loss funciton, each label gets the sigmoid (inverse of Logit) before the CE loss
         So our model outputs the raw values on the last FC layer
         This means we have to apply sigmoid to our outputs to squash them between 0 and 1
@@ -60,8 +70,14 @@ class Metrics():
 
         probabilities = torch.sigmoid(outputs.data) 
         predictions = probabilities.clone()
-        predictions[predictions >= 0.5] = 1 # assign 1 label to those with less than 0.5
-        predictions[predictions < 0.5] = 0 # assign 0 label to those with less than 0.5   
+        
+        #We need to make sure all tensors are in the same memory space
+        if self.target_thresholds.device != predictions.device:
+            self.target_thresholds = self.target_thresholds.to(predictions.device)
+        
+        predictions[predictions >= self.target_thresholds] = 1 # assign 1 label to those with gt or equal to threshold
+        predictions[predictions < self.target_thresholds] = 0 # assign 0 label to those with less than threshold   
+        
         return probabilities, predictions   
             
     def updateProbabilities(self, dictionary, ids, probabilities):
@@ -171,6 +187,7 @@ class Metrics():
             include_targets = target_columns
 
         true_positive_count = y_true.sum(axis=0)
+        pred_positive_count = y_pred.sum(axis=0)
 
         nans = np.ones(len(target_columns))
         nans[:] = np.nan
@@ -208,7 +225,8 @@ class Metrics():
             itemized_ap = nans
 
         df_itemized = pd.DataFrame({'Target':target_columns, 
-                                    'True Positive Count':true_positive_count, 
+                                    'True Positives':true_positive_count, 
+                                    'Predicted Positives':pred_positive_count, 
                                     'Recall':itemized_recall, 
                                     'Precision':itemized_precision, 
                                     'F1':itemized_f1, 
@@ -305,7 +323,8 @@ class Metrics():
         f.tight_layout()
         plt.show()             
             
-    def displayMetrics(self, metricDataSource = MetricDataSource.Both,
+    def displayMetrics(self, 
+                       metricDataSource = MetricDataSource.Both, #train, val, both
                        showCombinedMetrics=True,
                        showMetricDataFrame=True,
                        showROCCurves=True,

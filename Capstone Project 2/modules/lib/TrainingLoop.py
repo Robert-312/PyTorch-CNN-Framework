@@ -40,7 +40,7 @@ class TrainingLoop():
     def processBatch(self, data, is_validation=False):
         """
         Used for both training and validation.
-        Validation will not pass in the optimizer.
+        Validation will not touch in the optimizer.
         """
 
         # Convert output from loader
@@ -50,7 +50,7 @@ class TrainingLoop():
             # zero the parameter gradients
             self.optimizer.zero_grad()
 
-        # Convert output to predicitons
+        # Get outputs from Model
         outputs = self.net(inputs)
 
         return ids, inputs, labels, outputs    
@@ -128,7 +128,7 @@ class TrainingLoop():
 
             # Show metrics display (optional)
             if self.epoch_metric_display_args is not None:
-                self.metrics.displayMetrics(*self.epoch_metric_display_args)
+                self.metrics.displayMetrics(**self.epoch_metric_display_args)
             
             
             
