@@ -182,6 +182,13 @@ class Metrics():
         """
         
         target_columns = self.target_columns
+        
+        # Recall_score, precision_score and f1_score return the number of targets
+        # Except if there is only one target, than it returns 2 values
+        # So we have to take just the first dim if we are dealing with a single target!
+        single_target=False
+        if len(target_columns) == 1:
+            single_target=True
 
         if include_targets is None:
             include_targets = target_columns
@@ -195,6 +202,7 @@ class Metrics():
 
         try:
             itemized_recall = metrics.recall_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
+            if single_target: itemized_recall=itemized_recall[0]
         except Exception as e:
             errors['Recall'] = e
             itemized_recall = nans
@@ -202,12 +210,14 @@ class Metrics():
 
         try:    
             itemized_precision = metrics.precision_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
+            if single_target: itemized_precision=itemized_precision[0]
         except Exception as e:
             errors['Precision'] = e
             itemized_precision = nans
 
         try:    
             itemized_f1 = metrics.f1_score(y_true=y_true, y_pred=y_pred, average=None, zero_division=0)
+            if single_target: itemized_f1=itemized_f1[0]
         except Exception as e:
             errors['F1'] = e
             itemized_f1 = nans

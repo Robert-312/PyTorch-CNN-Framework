@@ -258,6 +258,12 @@ from modules.lib.TrainingLoop import *
 from modules.lib.Metrics import *
 from modules.lib.StandardTraining import *
 
+from modules.models.CustomPneumonia import CustomPneumoniaNN
+from modules.models.ResNet import ResNet_GrayScale, ResNet_PreTrained
+from modules.models.DenseNet import DenseNet
+
+from torchsummary import summary
+
 %matplotlib inline
 ```
 
@@ -1290,13 +1296,29 @@ These parameters include options for the data loaders, metrics and training loop
 
 The main purpose of the StandardTraining class is to allow repeatable model runs using the exact same default values.  So if you want to compare 2 runs with and without L2 regularization, you only need to override one parameter.  All the other parameters will be the same since the default values are used.
 
-There are also some training values that are hard coded into the class.  For example, the loss function is always BCEWithLogitsLoss and the optimizer is always Adam.  You modify some parameters of these two functions, but you cannot change their type.
+The basic steps involved are shown below:
 
-!!!!!!!!!!!!!!!!!!update test!!!!!!!!!!!!!!!!
+![alt text](Diagrams/StandardTrainingSteps.png "Standard Training Steps") 
 
 ## Criterion (Loss Function)
 
+**BCEWithLogitsLoss** was chosen for the loss function.  The output of the models are the raw nn.Linear() values.  Some loss functions assume an input that has already been converted to a probability (usually sigmoid or softmax).  Some accept 1 or two values for binary classification and some accept multiple probabilities based on multi-class problems (softmax).  
+
+Here we have a multi-label problem, with each target configured to be binary.  So Binary Cross Entropy would be a good fit, but this needs to be done separately for each target.  So we can't softmax the output of the model since that would predict which target is the best fit and not how well the match was for each target independently.
+
+BCEWithLogitsLoss solves this problem for us.  It takes each value for the targets, applies the sigmoid function to each of the targets and then runs the BCE on each.  So the calculation will be done independently for our 12 labels.
+
+BCEWithLogitsLoss has the ability to reduce these 12 values into a single value (mean or sum) or to output the 12 loss values independently.  
+
+Since we are training all labels concurrently, we will reduce the the 12 values into a single loss scalar.  The StandardTraining class allows you you pass in which reduction you want.  Mean is the current default value, but a very good case can be made for sum.  Performing a mean on the 12 values cause some canceling, a label with a large loss can cancel the label with a small loss if both are evenly distanced from the mean.  Sum makes all the labels contribute more to the learning since there is not cancelling.  But using the sum will make the loss value very large and might require adjustments to other parameters like the learning rate.
+
+
 ## Optimizer
+
+The optimizer was an easier choice to make.  There has been a lot of success with the Adam approach to optimization.  This is mainly achieved by looking at the Hessian matrix and determining the curvature of the hyperplane at the current position of the training parameters.  If the curvature is concave down, we are heading to a trough and we need to slow the learning rate down so we don't jump a critical valley.  If the curvature is flat, we keep the learning rate constant.  If we are near a local maxima, we can increase the lr to quicken learning since we are near any troughs.  
+
+PyTorch offers L2 regularization directly in it's Adam optimizer.  This is done by the weight_decay parameter.  Though we could manually do regularization after the loss value is obtained, i.e. Matrix norm of various flavors, L1 Lasso, etc., the current framework only offers the L2 λ option which is passed into the Adam weight_decay parameter.
+
 
 ### ModelLoop
 
@@ -1308,51 +1330,120 @@ There is also a support notebook:
 
 <a href="notebooks/Support%20Notebooks%20for%20Modules/ModelLoop_NB.ipynb" >Model Loop Notebook</a>
 
+# Models
 
-# Models Used
-### Custom
-### ResNet
-### Dropout
--   Pre-Trained
--   DenseNet
-# Training Features
-### Criterion
-### BCEWiogitsLoss
--   pos_weight
--   Reduction
-### Optimizer
--   Adam
--   L2 Regularization
-### Image Augmentations
--   Affine
--   Translation
--   Shear
--   Brightness
--   Contract
-### Oversampling
--   Min observation count
-### Training Targets
-# Metrics
-### Epoch (Itemized)
--   Recall
--   Precision
--   F1
--   ROC AUC
--   Avg Precision
-### Training Completion
--   Accuracy
--   All Labels
--   Hamming Loss
--   Combined Recall/Precision
--   ROC / Precision-Recall Curves
-### Epoch Progression
--   Accuracy
--   Recall
--   Precision
--   F1
--   ROC AUC
--   Avg Precision
--   Persistence
+## Custom Pneumonia
+
+<a href="modules/models/CustomPneumonia.py" >CustomPneumonia.py</a>
+
+This is a custom built network done mostly for the experience of manually building a CNN from scratch.
+
+It was first used with a binary classification dataset from Kaggle using pediatric x-rays detecting a single finding of pneumonia.
+
+All the convolution layers follow a simple pattern of:
+- 2d Convolution
+- Batch Normalization
+- Relu
+- 2x2 Max Pooling
+
+All the kernel sizes are 3x3 except for the first layer which is 5x5.
+
+The 3 layers are:
+1. 1 in / 512 out
+2. 512 in / 256 out
+3. 256 in / 64 out
+
+After all the pooling, the output "image" size is not 40x40, so the first FC layer takes in 64x40x40.
+
+The first FC layers follow the patterns of:
+- Linear
+- Relu
+- DropOut
+
+The last FC layer outputs the raw scores from nn.Linear
+
+The Fully Connected layers are:
+1. 64x40x40 in / 1024 out
+2. 1024 in / 512 out
+3. 512 in / n out
+
+n is the number of targets used which can be any number from 1 to 12 with our dataset.
+
+
+#### Summary of CustomPneumonia
+
+
+```python
+net = CustomPneumoniaNN() 
+net = nn.DataParallel(net)
+net.cuda()
+summary(net, (1, 320, 320)) 
+```
+
+    ----------------------------------------------------------------
+            Layer (type)               Output Shape         Param #
+    ================================================================
+                Conv2d-1        [-1, 512, 320, 320]          13,312
+           BatchNorm2d-2        [-1, 512, 320, 320]           1,024
+             MaxPool2d-3        [-1, 512, 160, 160]               0
+                Conv2d-4        [-1, 256, 160, 160]       1,179,904
+           BatchNorm2d-5        [-1, 256, 160, 160]             512
+             MaxPool2d-6          [-1, 256, 80, 80]               0
+                Conv2d-7           [-1, 64, 80, 80]         147,520
+           BatchNorm2d-8           [-1, 64, 80, 80]             128
+             MaxPool2d-9           [-1, 64, 40, 40]               0
+               Linear-10                 [-1, 1024]     104,858,624
+              Dropout-11                 [-1, 1024]               0
+               Linear-12                  [-1, 512]         524,800
+              Dropout-13                  [-1, 512]               0
+               Linear-14                    [-1, 1]             513
+    CustomPneumoniaNN-15                    [-1, 1]               0
+    ================================================================
+    Total params: 106,726,337
+    Trainable params: 106,726,337
+    Non-trainable params: 0
+    ----------------------------------------------------------------
+    Input size (MB): 0.39
+    Forward/backward pass size (MB): 1019.55
+    Params size (MB): 407.13
+    Estimated Total Size (MB): 1427.07
+    ----------------------------------------------------------------
+    
+
+## ResNet
+
+<a href="modules/models/ResNet.py" >ResNet.py</a>
+
+This is a class that uses one of the 5 ResNet models that come with PyTorch.   4 layer options are offered [18, 34, 50, 101, 152].  
+
+In the init method, the model is set to one of the pre-built models based on the layers parameter.  Since we are using grayscale images and the models were built for RBG, the first layer is overwritten to take in 1 input channel instead of the hard coded 3 channels.
+
+There is also an option to pass in a drop_out_precent parameter.  If this is passed into the constructor, a hook is registered to the fully connected layers that adds a dropout call to the sequence.
+
+The default number of output channels of the last FC layer is set to 12, but this can be changed to any value between 1 and 12 for this dataset.
+
+There is also a Pre-trained class in this module.  It is almost identical to the above class, but keeps the hard coded 3 input channels.  In the forward method, the grayscale image is run through:
+
+    x = torch.repeat_interleave(input=x, repeats=3, dim=1)
+    
+This duplicates the grayscale into 3 identical channels to mimic the RGB images the model was trained on.  
+
+Though not required, the image size should be adjusted to 224x224 to match ImageNet.  This can be done with 2 parameters in the StandardTraining class constructor.
+
+
+
+## DenseNet
+
+<a href="modules/models/DenseNet.py" >DenseNet.py</a>
+
+This is copy of the DenseNet with 5 layers in each DenseBlock using 3 of these blocks.  
+
+The source was obtained from:
+<a href="https://towardsdatascience.com/simple-implementation-of-densely-connected-convolutional-networks-in-pytorch-3846978f2f36" >Simple Implementation of Densely Connected Convolutional Networks in PyTorch</a>
+
+Instead of skiping connections like ResNet does, DenseNet concatanates all the previous layers in the block.  Both approaches allow earlier layers to continue to have influence
+
+# Results
 Combination Tried
 A
 B
@@ -1774,14 +1865,14 @@ metrics.displayMetrics()
     
 
 
-![png](Readme%20Images/output_38_4.png)
+![png](Readme%20Images/output_43_4.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme%20Images/output_38_6.png)
+![png](Readme%20Images/output_43_6.png)
 
 
     
@@ -1932,14 +2023,14 @@ metrics.displayMetrics()
     
 
 
-![png](Readme%20Images/output_38_11.png)
+![png](Readme%20Images/output_43_11.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme%20Images/output_38_13.png)
+![png](Readme%20Images/output_43_13.png)
 
 
 
@@ -1954,7 +2045,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_1.png)
+![png](Readme%20Images/output_44_1.png)
 
 
     
@@ -1964,7 +2055,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_3.png)
+![png](Readme%20Images/output_44_3.png)
 
 
     
@@ -1974,7 +2065,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_5.png)
+![png](Readme%20Images/output_44_5.png)
 
 
     
@@ -1984,7 +2075,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_7.png)
+![png](Readme%20Images/output_44_7.png)
 
 
     
@@ -1994,7 +2085,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_9.png)
+![png](Readme%20Images/output_44_9.png)
 
 
     
@@ -2004,5 +2095,5 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_39_11.png)
+![png](Readme%20Images/output_44_11.png)
 
