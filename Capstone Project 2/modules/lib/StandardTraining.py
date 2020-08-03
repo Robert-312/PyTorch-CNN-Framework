@@ -136,8 +136,8 @@ class StandardTraining():
         self.metrics = Metrics(self.target_columns, self.train_actual, self.val_actual, target_thresholds=target_thresholds, cc=0)
         self.trainingLoop = TrainingLoop(self.device, self.net, self.optimizer, self.criterion, self.metrics)
         
-        display_columns = target_columns.copy()
-        if len(target_columns) == 12: #all targets
+        display_columns = self.target_columns.copy()
+        if len(self.target_columns) == 12: #all targets
             display_columns = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Pleural_Effusion']
         
         if epoch_args=='standard':
