@@ -164,7 +164,9 @@ class StandardTraining():
     def displayMetrics(self):
         self.metrics.displayMetrics()
         
-    def displayEpochProgression(self):
+    def displayEpochProgression(self, display_columns = None):
+        if display_columns is None:
+            display_columns = self.target_columns
         self.metrics.displayEpochProgression(include_targets = display_columns)
         
     def saveRunParameters(self):

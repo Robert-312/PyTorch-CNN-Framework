@@ -156,17 +156,30 @@ class Metrics():
         docstring
         """
         
+        single_target=False
+        if y_true.shape[1]==1:
+            #Single target so we can't dop average
+            single_target=True
+            average = None
 
         accuracy_score = metrics.accuracy_score(y_true=y_true, y_pred=y_pred, normalize=True)
         hamming_loss = metrics.hamming_loss(y_true=y_true, y_pred=y_pred)
         recall_score = metrics.recall_score(y_true=y_true, y_pred=y_pred, average=average, zero_division=0)
         precision_score = metrics.precision_score(y_true=y_true, y_pred=y_pred, average=average, zero_division=0)
         f1_score = metrics.f1_score(y_true=y_true, y_pred=y_pred, average=average, zero_division=0)
+               
+        if single_target:
+            #Single target so recall, precision and F1 results should only look at the first value
+            recall_score = recall_score[0]
+            precision_score = precision_score[0]
+            f1_score = f1_score[0]
 
-
+        hamming_accuracy = 1-hamming_loss
+        
         df_combined = pd.DataFrame({
                                     'Accuracy Score':[accuracy_score],
                                     'Hamming Loss':[hamming_loss],
+                                    'Hamming Accuracy':[hamming_accuracy],
                                     'Combined Recall':[recall_score],
                                     'Combined Precision':[precision_score],
                                     'Combined F1':[f1_score]})
@@ -516,11 +529,13 @@ class Metrics():
                 val_epoch_score[epochNumber] = score_function(y_true=val_y_true, y_pred=val_epoch_pred, 
                                                               average=None, zero_division=0)
 
-        df_train = pd.DataFrame(train_epoch_score)
-        df_train.index = target_columns
-
-        df_val = pd.DataFrame(val_epoch_score)
-        df_val.index = target_columns
+                if len(target_columns)==1:
+                    #Single target so recall, precision and F1 results should only look at the first value
+                    train_epoch_score[epochNumber] = train_epoch_score[epochNumber][0]
+                    val_epoch_score[epochNumber] = val_epoch_score[epochNumber][0]
+        
+        df_train = pd.DataFrame(train_epoch_score, index = target_columns)
+        df_val = pd.DataFrame(val_epoch_score, index = target_columns)
 
         f = plt.figure(figsize=(width, height))
         gs = f.add_gridspec(1, 2)
