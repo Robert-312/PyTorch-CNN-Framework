@@ -1,6 +1,6 @@
 # Overview
 
-This is a CNN project for a dataset consisting of labeled chest x-ray images.  There are over 200k x-rays in the dataset, each labeled with 14 findings.  The dataset in its raw form is both multi-label and multi-class in that each x-ray can have more than one label, and each of these labels can be one of 4 values (non mentuned, negative, uncertain and positive).
+This is a CNN project for the **CheXpert** dataset consisting of labeled chest x-ray images.  There are over 200k x-rays in the dataset, each labeled with 14 findings.  The dataset in its raw form is both multi-label and multi-class in that each x-ray can have more than one label, and each of these labels can be one of 4 values (not mentuned, negative, uncertain and positive).
 
 This project will reduce this dataset to about 137k images with 12 binary labels making this project just a multi-label CNN problem.
 
@@ -9,16 +9,47 @@ https://stanfordmlgroup.github.io/competitions/chexpert/
 
 # Purpose
 
-The purpose of this project is to build a framework that will easily allow repeatable runs of the dataset with variable parameters, images counts, models, etc.  Though it is always desired to produce the best possible accuracy, recall and precision in our predictions, the main goal of this project is to build the framework to more easily allow finetuning of model runs and not specifically finding the best configuration.
+The purpose of this project is to build a framework that will easily allow repeatable runs of the dataset with variable parameters, images counts, models, etc.  Though it is always desired to produce the best possible accuracy, recall and precision in our predictions, the main goal of this project is to build the framework to more easily allow finetuning of model runs and not specifically finding the best configuration.  The hope is that by building a solid framework, a much deeper understanding of the working of CNN and all Neural Networks will be gained.
 
-# Framework
+# Framework ERD
 
-Below if a high level diagram of how the framework was built:
+Below if a high level entity relationship diagram of how the framework was built:
 
 ![alt text](Diagrams/StandardTraining.png "Standard Training Overview") 
 
 
-# Goals
+# Table of Contents
+
+- [Goals](#Goals)
+- [Educational Notebooks](#Educational_Notebooks)
+- [Dataset](#Dataset)
+- [Project Directory Structure](#Project_Directory_Structure)
+- [Environments](#Environments)
+- [EDA](#EDA)
+- [CleanMetaData](#CleanMetaData)
+	- [Intrinsic Leaks](#Intrinsic_Leaks)
+	- [Target Interdependence](#Target_Interdependence)
+	- [Imbalance](#Imbalance)
+- [Modules](#Modules)
+    - [CheXpertData Module](#CheXpertData_module)
+    - [TrainingLoop and Metrics_Modules](#TrainingLoop_and_Metrics_Modules)
+    - [Standard raining Module](#Standard_Training_Module)
+- [Criterion and Optimizer](#Criterion_Optimizer)
+- [Models](#Models)
+	- [Custom](#Custom)
+	- [ResNet](#ResNet)
+	- [DenseNet](#DenseNet)
+- [Results](#Results)
+    - [Single Target Runs](#Single_Target_Runs)
+    - [5 Targets](#5_Targets)
+    - [All 12 Targets](#All_12_Targets)
+    - [20 Epochs](#20_Epochs)
+    - [5 Independent Models](#5_Independent_Models)
+- [Conclusions](#Conclusions)
+- [Future Areas of Exploration](#Future_Areas_of_Exploration)
+- [Final Thoughts](#Final_Thoughts)
+
+# Goals <a class="anchor" id="Goals"></a>
 
 ### Build a Framework for better Understanding
 
@@ -58,7 +89,23 @@ ROC is always important, but this is more of a true metric of how well the model
 We can easily make our recall values 100% by always predicting a positive finding.  So Recall is of no value if we don't keep the precision under control.
 
 
-# Dataset
+# Educational Notebooks <a class="anchor" id="Educational_Notebooks"></a>
+
+### Linear Regression from Scratch using PyTorch
+
+<a href="notebooks/Educational/Pytorch%20Linear%20Regression%20from%20Scratch.ipynb" >Pytorch Linear Regression from Scratch</a>
+
+This notebook explored a simple linear regression using PyTorch.  A simple model is built from scratch using manually built linear and loss functions and a simple gradient descent class that inherits from torch.optim.Optimizer.
+
+This notebook then goes into polynomial regression to predict the coefficients of a 3rd degree polynomial.
+    
+
+### Autograd package in PyTorch    
+<a href="notebooks/Educational/Pytorch%20Automatic%20Differentiation.ipynb" >Pytorch Automatic Differentiation</a>
+
+This notebook looks at the torch.autograd package and explores how PyTorch implements automatic differentiation.  Various functions including polynomials are looked at and how the computational graphs along with the chain rule to see how forward and backward passes determine the gradient of the function with respect to the input variables.
+
+# Dataset <a class="anchor" id="Dataset"></a>
 
 The raw dataset comes as a set of images along with a csv index file.  There is one row in the csv file for each x-ray.
 There are both train and validation dataset with 223,415 and 234 images respectively.  Since the validation set was so small, only the train dataset was used.  These 223,415 images were randomly split into train and val during the model runs.
@@ -108,8 +155,8 @@ The images in this dataset cannot be made publically available.  Because of this
 
 *Note:  See Hierarchical Path below for special directory structure*
 
-# ═══════════════════════════════════
-# Project Directory Structure
+# ═════════════════════════
+# Project Directory Structure <a class="anchor" id="Project_Directory_Structure"></a>
 
 
 ## <a href="data" >data</a>
@@ -177,6 +224,7 @@ The images in this dataset cannot be made publically available.  Because of this
     * Notebooks that train a single model and parameters
     * **<a href="notebooks/ModelRuns/saved" >saved</a>**
         - Holds the pickle serialization of the model runs
+        - *Note: Due to size constraints, this folder was not committed to GitHub*
 -   **<a href="notebooks/Support%20Notebooks%20for%20Modules" >Support Notebooks for Modules</a>**
     * The workspace used to help build the modules
     * <a href="notebooks/Support%20Notebooks%20for%20Modules/CheXpertData_NB.ipynb" >CheXpertData_NB</a>
@@ -189,15 +237,15 @@ The images in this dataset cannot be made publically available.  Because of this
     * <a href="notebooks/Support%20Notebooks%20for%20Modules/StandardTraining_NB.ipynb" >StandardTraining_NB</a>
     * <a href="notebooks/Support%20Notebooks%20for%20Modules/TrainingLoop_NB.ipynb" >TrainingLoop_NB</a>
 
-# ═══════════════════════════════════
+# ═════════════════════════
 
-# Environments
+# Environments <a class="anchor" id="Environments"></a>
 
 This project is intended to run both locally with GPU and on Google CoLab.  Locally (GEFORCE RTX 2080 - 8GB), most models run very well, but might need to adjust the batch size down for some. The same notebooks can also run on Google CoLab without any changes.  The bootstrap code block at the top of the notebooks determines the working directory on both environments and sets the PyTorch device to cuda. 
 
 Most if not all of the notebooks in this project were completed locally.  Though CoLab has the advantage from a computational power perspective, it is very slow accessing the image files.
 
-# Hierarchical Directory
+## Hierarchical Directory
 
 To see how to implement the hierarchical path, see: 
 <a href="notebooks/Support%20Notebooks%20for%20Modules/HierarchicalPath.ipynb" >Hierarchical Path Notebook</a>
@@ -216,7 +264,7 @@ Though this did resolve the timeout issue, the training loops were still much sl
 
 *Note:  The hierarchical directories greatly helped the upload process!*
 
-# EDA
+# EDA  <a class="anchor" id="EDA"></a>
 
 Bootstrap code to set working directory and mount drive in CoLab
 
@@ -305,7 +353,7 @@ To reduce the complexity of combining multi-label and multi-class classification
 - Uncertain = 0
 - Positive = 1
 
-# CleanMetaData
+# CleanMetaData <a class="anchor" id="CleanMetaData"></a>
 
 
 ```python
@@ -652,7 +700,7 @@ display(df_clean)
 </div>
 
 
-# Intrinsic Leaks
+# Intrinsic Leaks <a class="anchor" id="Intrinsic_Leaks"></a>
 Though there is nothing we can do about this, there are intrinsic leaks in the images that we should be aware of.
 
 In-patients are much more likely to have positive findings then out-patients, especially out-patient routine screening x-rays. In-patient x-rays oftentimes can have leaks in the images.  ECG leads, IVs and gown snaps are often present.  Higher acuity patients will oftentimes have their x-rays taken in bed with AP orientation.  PA is preferred since it does not tend to exaggerate the cardiac silhouette.  Also, it might be harder to properly align very sick patients.  All of these can leak features more common in positive diagnoses.  
@@ -667,10 +715,10 @@ plt.show()
 ```
 
 
-![png](Readme%20Images/output_17_0.png)
+![png](Readme%20Images/output_19_0.png)
 
 
-# Target Interdependence
+# Target Interdependence <a class="anchor" id="Target_Interdependence"></a>
 Though each of the 12 labels can be found independently of each other, it is very common to have findings that correlate with other findings.  For example, it would be more common to find atelectasis in patients with pneumonia or pleural effusions.  Rib fractures may make it painful to ambulate potentially leading to other lung diseases such as atelectasis or pneumonia.
 
 Patients with high comorbidities may have several of these findings.  Diagnoses like Cardiomeglia tend to not be transient and can persist for years.  These longer term diseases may or may not correlate to other pathologies.
@@ -685,10 +733,10 @@ plt.show()
 ```
 
 
-![png](Readme%20Images/output_19_0.png)
+![png](Readme%20Images/output_21_0.png)
 
 
-# Imbalance
+# Imbalance <a class="anchor" id="Imbalance"></a>
 
 One of the biggest challenges is the imbalance of the 12 targets.  The most frequent target, Lung Opacity, occurs in about 45% of the x-rays.  But as you can see below, the majority of the labels have less than a 15% positive occurrence.
 
@@ -707,10 +755,14 @@ ax.grid()
 ```
 
 
-![png](Readme%20Images/output_21_0.png)
+![png](Readme%20Images/output_23_0.png)
 
 
-# CheXpertData module (DataFrame, Dataset and DataLoaders)
+# Modules  <a class="anchor" id="Modules"></a>
+
+
+
+# CheXpertData module (DataFrame, Dataset and DataLoaders)  <a class="anchor" id="CheXpertData_module"></a>
 
 Please go to the supporting notebook for these classes: 
 <a href="notebooks/Support%20Notebooks%20for%20Modules/CheXpertData_NB.ipynb" >CheXpertData Notebook</a>
@@ -1001,7 +1053,7 @@ display(df_combinations.tail(5))
 </div>
 
 
-# TrainingLoop and Metrics modules
+# TrainingLoop and Metrics Modules  <a class="anchor" id="TrainingLoop_and_Metrics_Modules"></a
 
 Both of the modules hold a single class with the same name.
 
@@ -1247,7 +1299,7 @@ The Metrics class also has a method (displayEpochProgression) to display plots b
 
 
 
-## Standard Training Module
+## Standard Training Module <a class="anchor" id="Standard_Training_Module"></a>
 
 This module is the glue for all other modules.  
 
@@ -1300,7 +1352,7 @@ The basic steps involved are shown below:
 
 ![alt text](Diagrams/StandardTrainingSteps.png "Standard Training Steps") 
 
-## Criterion (Loss Function)
+## Criterion (Loss Function) <a class="anchor" id="Criterion_Optimizer"></a>
 
 **BCEWithLogitsLoss** was chosen for the loss function.  The output of the models are the raw nn.Linear() values.  Some loss functions assume an input that has already been converted to a probability (usually sigmoid or softmax).  Some accept 1 or two values for binary classification and some accept multiple probabilities based on multi-class problems (softmax).  
 
@@ -1330,9 +1382,9 @@ There is also a support notebook:
 
 <a href="notebooks/Support%20Notebooks%20for%20Modules/ModelLoop_NB.ipynb" >Model Loop Notebook</a>
 
-# Models
+# Models  <a class="anchor" id="Models"></a>
 
-## Custom Pneumonia
+## Custom <a class="anchor" id="Custom"></a>
 
 <a href="modules/models/CustomPneumonia.py" >CustomPneumonia.py</a>
 
@@ -1410,7 +1462,7 @@ summary(net, (1, 320, 320))
     ----------------------------------------------------------------
     
 
-## ResNet
+## ResNet <a class="anchor" id="ResNet"></a>
 
 <a href="modules/models/ResNet.py" >ResNet.py</a>
 
@@ -1432,7 +1484,7 @@ Though not required, the image size should be adjusted to 224x224 to match Image
 
 
 
-## DenseNet
+## DenseNet <a class="anchor" id="DenseNet"></a>
 
 <a href="modules/models/DenseNet.py" >DenseNet.py</a>
 
@@ -1443,16 +1495,685 @@ The source was obtained from:
 
 Instead of skiping connections like ResNet does, DenseNet concatanates all the previous layers in the block.  Both approaches allow earlier layers to continue to have influence
 
-# Results
-Combination Tried
-A
-B
-C
-D
-Results
-Educational Notebooks
-Todo
+# Results <a class="anchor" id="Results"></a>
 
+## General Remarks
+
+### Difficulty Increases as Number of Multi-Labels Targets Increases
+
+Picking a single target to train on produces much better results.  Even adding a second target, especially if codependency is low, greatly reduces the predictive value.  If we do all 12 targets, we see a "toggling" of targets:
+- Epoch n
+    * Good results for target A
+    * Poor results for target B
+- Epoch n+1
+    * Poor results for target A
+    * Good results for target B
+    
+This effect is so dominate that if we were taking this to production, strong consideration should be given to training 12 different models, each with only one target.  When a new image comes in to get a prediction, it would get evaluated 12 times.  A lot of factors would come into play here to determine if this kind of approach would be feasible in a production environment, but one can imagine having the models deployed to the hospital/clinic location so the increased time to do 12 predictions might not be a problem.
+
+### Very Few Epochs were Needed
+At the beginning of this project, a lot of work was put into tracking progress across multiple epochs.  There are plots for various scores that show how the metrics progressed from epoch to epoch.
+
+But with over 130,000 images, it looks like most of the training occurred in the first epoch or two.  Most of the models had no problem increasing the training accuracy to the point where Recall, Precision, ROC AUD and Average Precision all showed values in the upper 90% range.  In fact, this was very much a textbook case of overfitting where as training got better, validation got worse.
+
+So most of the model runs used very low epoch counts.  The epoch progression plots do not look very impressive with only a few values on the x-axis, but these still proved valuable since it sometimes gave a good indication of the max number of epochs to use.
+
+### Never Enough Regularization / Fighting Imbalance
+This is a combination of the two findings above.  With the "toggle" effect and the overfitting, different ways to add regularization and imbalance compensation to the training was a major effort.  
+
+These included:
+- Increased image augmentations on the training data
+- Add oversampling to underrepresented target vectors
+- Add dropout layers
+- Large lambda for L2 regularization
+- Positive weights for underrepresented targets
+
+Though these training features were a significant help, it was hard to determine which where needed and which were not that effective.  Thought was given to doing multiple runs to determine this, but due to time constraints, this was not done.  So, most models either included all or none of these features.
+
+Also, even with all of these training features, chances are having 12 different models with a single target each would be more effective.
+
+## Display Metrics of Saved Model Runs
+There will be 3 things we look at for results of a model run:  
+1. Network name and all run parameters
+2. Final results
+3. Progression of the metrics at each epoch (might be skipped with low epoch counts)
+
+
+
+
+## Single Target Runs <a class="anchor" id="Single_Target_Runs"></a>
+
+Though the dataset has 12 targets, let's see what things look like with when we are only trying to predict a single target.
+
+
+### ResNet34_Pleural_Effusion
+
+<a href="notebooks/ModelRuns/ResNet34_Pleural_Effusion.ipynb" >ResNet34_Pleural_Effusion</a>
+
+This run was just against a single target and only used one training feature: drop_out_precent=50%.
+
+Number of Training Images: 105,338
+Number of Validation Images: 26,410
+
+Number of Postivies in Training Images: 35,812 (33.9%)
+Number of Postivies in Validation Images: 8,922 (33.7%)
+
+
+```python
+save_name = 'ResNet34_Pleural_Effusion'
+path= f'notebooks/ModelRuns/saved/{save_name}/'
+StandardTraining.displayRunParameters(path)
+```
+
+    Network Name:  DenseNet
+    Nework Arguments:  nr_classes:1
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Paramter</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>number_images</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>batch_size</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>learning_rate</td>
+      <td>1e-05</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>num_epochs</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>epoch_args</td>
+      <td>standard</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>use_positivity_weights</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>image_width</td>
+      <td>224</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>image_height</td>
+      <td>224</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>affineDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>translatePrecent</td>
+      <td>0.05</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>shearDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>brightnessJitter</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>contrastJitter</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>augPercent</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>observation_min_count</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>l2_reg</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>loss_reduction</td>
+      <td>mean</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>target_thresholds</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    Targets:  Pleural_Effusion
+    
+
+
+```python
+metrics = StandardTraining.loadMetrics(path) 
+metrics.displayMetrics()
+```
+
+    
+    TRAINING
+    
+    ▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.748688</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.251312</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.748688</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.850941</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.786455</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.817428</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Pleural_Effusion</td>
+      <td>35628</td>
+      <td>29928</td>
+      <td>0.850941</td>
+      <td>0.786455</td>
+      <td>0.817428</td>
+      <td>0.800066</td>
+      <td>0.658295</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_45_4.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_45_6.png)
+
+
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.753458</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.246542</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.753458</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.832552</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.800572</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.816249</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Pleural_Effusion</td>
+      <td>9106</td>
+      <td>8407</td>
+      <td>0.832552</td>
+      <td>0.800572</td>
+      <td>0.816249</td>
+      <td>0.809019</td>
+      <td>0.674797</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_45_11.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_45_13.png)
+
+
+#### As you can see, the Recall after the 2 epochs was 96.6% with a Precision of 82%.  The AUC was 81%.
+These are pretty good numbers if Recall is the primary goal.  If all we were interested in was predicting Pleural Effusions, we would take this as a very good starting point and concentrate our hyperparameter tuning here.
+
+If we look at the F1 and F2 score, we get 81.3% and 86.5% respectively.  F2 is the weighted harmonic mean giving bias to the Recall score.  Weight Recall with 2 and Weight Precision with 1 (F1 weighs both as 1):
+
+$\frac{2+1}{\frac{2}{0.965862} + \frac{1}{0.71654}} = 0.86548$
+
+## Let's look at DenseNet and the Custom model to see how they compare:
+
+*Note: Both the Custom and DenseNet models run images at 224x244 due to memory constraints.  The ResNet runs at the default image size of 320x320.*
+
+## Custom
+
+<a href="notebooks/ModelRuns/CustomPneumonia_Pleural_Effusion.ipynb" >CustomPneumonia_Pleural_Effusion</a>
+
+*Note:  Model was poorly named "CustomPneumoniaNN".  Pneumonia was named when used with a Kaggle dataset, but does NOT necessarily mean the target is Pneumonia.*
+
+
+```python
+save_name = 'CustomPneumonia_Pleural_Effusion'
+path= f'notebooks/ModelRuns/saved/{save_name}/'
+StandardTraining.displayRunParameters(path)
+metrics = StandardTraining.loadMetrics(path) 
+
+display_args = {'metricDataSource':MetricDataSource.ValidationOnly, 
+                  'showCombinedMetrics':True, 
+                  'showMetricDataFrame':False, 
+                  'showROCCurves':False, 
+                  'showPrecisionRecallCurves':False}
+
+metrics.displayMetrics(**display_args)
+```
+
+    Network Name:  CustomPneumoniaNN
+    Nework Arguments:  out_channels:1,image_size:(224, 224)
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Paramter</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>number_images</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>batch_size</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>learning_rate</td>
+      <td>1e-05</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>num_epochs</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>epoch_args</td>
+      <td>standard</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>use_positivity_weights</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>image_width</td>
+      <td>224</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>image_height</td>
+      <td>224</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>affineDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>translatePrecent</td>
+      <td>0.05</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>shearDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>brightnessJitter</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>contrastJitter</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>augPercent</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>observation_min_count</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>l2_reg</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>loss_reduction</td>
+      <td>mean</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>target_thresholds</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    Targets:  Pleural_Effusion
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.733027</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.266973</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.733027</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.861472</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.764220</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.809937</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+## DenseNet_Pleural_Effusion
+
+<a href="notebooks/ModelRuns/DenseNet_Pleural_Effusion.ipynb" >DenseNet_Pleural_Effusion</a>
+
+The saved folder for this notebook was lost, but you can see the results directly in the notebook above.
+
+Both the Custom and DenseNet produced similar values for Recall, around the 85% range.  These lower values could just be a "Stochastic volatility" issue since the train/validation split is randomly done with each run.  It could also be that the reduced image size has an influence.  
+
+But with this and other runs along with the increased time and resources needed for DenseNet and the Custom models, ResNet was mostly used for the rest of the runs!
+
+# 5 Targets <a class="anchor" id="5_Targets"></a>
+
+## ResNet34_Oversample_L2_Sum_PosWeight_5_Targets
+
+<a href="notebooks/ModelRuns/ResNet34_Oversample_L2_Sum_PosWeight_5_Targets.ipynb" >ResNet34_Oversample_L2_Sum_PosWeight_5_Targets</a>
+
+#### Targets:
+- Atelectasis
+- Cardiomegaly
+- Consolidation
+- Edema
+- Pleural Effusion
+
+This run is similar to the Pleural Effusion run from above, but now with 5 targets.  The 5 targets were chosen from the CheXpert competition list of targets.
+
+This run has most of the training featured implemented (see run parameters below):
 
 
 ```python
@@ -1460,6 +2181,9 @@ save_name = 'ResNet34_Oversample_L2_Sum_PosWeight_5_Targets'
 path= f'notebooks/ModelRuns/saved/{save_name}/'
 StandardTraining.displayRunParameters(path)
 metrics = StandardTraining.loadMetrics(path) 
+
+metrics.displayMetrics()
+metrics.displayEpochProgression()
 ```
 
     Network Name:  ResNet_GrayScale
@@ -1582,17 +2306,408 @@ metrics = StandardTraining.loadMetrics(path)
 
     Targets:  Atelectasis,Cardiomegaly,Consolidation,Edema,Pleural_Effusion
     
+    TRAINING
+    
+    ▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.208979</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.364463</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.635537</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.304625</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.172284</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.206766</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Atelectasis</td>
+      <td>17402</td>
+      <td>24427</td>
+      <td>0.242328</td>
+      <td>0.172637</td>
+      <td>0.201630</td>
+      <td>0.522524</td>
+      <td>0.171640</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>12805</td>
+      <td>67105</td>
+      <td>0.865834</td>
+      <td>0.165219</td>
+      <td>0.277487</td>
+      <td>0.707593</td>
+      <td>0.228392</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Consolidation</td>
+      <td>7637</td>
+      <td>43540</td>
+      <td>0.705382</td>
+      <td>0.123725</td>
+      <td>0.210524</td>
+      <td>0.720979</td>
+      <td>0.186566</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Edema</td>
+      <td>25177</td>
+      <td>18418</td>
+      <td>0.187354</td>
+      <td>0.256108</td>
+      <td>0.216401</td>
+      <td>0.582845</td>
+      <td>0.265360</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Pleural_Effusion</td>
+      <td>36519</td>
+      <td>47585</td>
+      <td>0.760207</td>
+      <td>0.583419</td>
+      <td>0.660183</td>
+      <td>0.810004</td>
+      <td>0.672999</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_51_6.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_51_8.png)
+
+
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.169521</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.426366</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.573634</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.355300</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.169241</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.217143</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Atelectasis</td>
+      <td>4121</td>
+      <td>5562</td>
+      <td>0.202863</td>
+      <td>0.150306</td>
+      <td>0.172674</td>
+      <td>0.508370</td>
+      <td>0.153481</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>3019</td>
+      <td>17700</td>
+      <td>0.875124</td>
+      <td>0.149266</td>
+      <td>0.255032</td>
+      <td>0.686749</td>
+      <td>0.199851</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Consolidation</td>
+      <td>1571</td>
+      <td>14899</td>
+      <td>0.813495</td>
+      <td>0.085778</td>
+      <td>0.155191</td>
+      <td>0.678652</td>
+      <td>0.101998</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Edema</td>
+      <td>6109</td>
+      <td>8691</td>
+      <td>0.363398</td>
+      <td>0.255437</td>
+      <td>0.300000</td>
+      <td>0.585033</td>
+      <td>0.255967</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Pleural_Effusion</td>
+      <td>8866</td>
+      <td>15329</td>
+      <td>0.875592</td>
+      <td>0.506426</td>
+      <td>0.641703</td>
+      <td>0.818579</td>
+      <td>0.686954</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_51_13.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_51_15.png)
+
+
+    
+    ACCURACY
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_51_17.png)
+
+
+    
+    RECALL
+    
+    ▔▔▔
+    
+
+
+![png](Readme%20Images/output_51_19.png)
+
+
+    
+    PRECISION
+    
+    ▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_51_21.png)
+
+
+    
+    F1
+    
+    ▔
+    
+
+
+![png](Readme%20Images/output_51_23.png)
+
+
+    
+    ROC AUC
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_51_25.png)
+
+
+    
+    AVERAGE PRECISION
+    
+    ▔▔▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_51_27.png)
+
+
+### As you can, the numbers were not very good
+
+Only 3 of the 5 targets had some progress in training.  The other 2 targets (Atelectasis,Edema) did not do much better than 50/50 chance.  You can also see from the epoch progression, neither train of val was able to increase feature performance with more epoch (with the exception of Pleural Effusion).
+
+# All 12 Targets <a class="anchor" id="All_12_Targets"></a>
 
 
 ```python
-save_name = 'DenseNet_Oversample_L2_Sum_PosWeight_5_Targets'
+save_name = 'ResNet34_Oversample_L2_Sum_PosWeight_12_Targets'
 path= f'notebooks/ModelRuns/saved/{save_name}/'
 StandardTraining.displayRunParameters(path)
 metrics = StandardTraining.loadMetrics(path) 
+
+metrics.displayMetrics()
+metrics.displayEpochProgression()
 ```
 
-    Network Name:  DenseNet
-    Nework Arguments:  nr_classes:5
+    Network Name:  ResNet_GrayScale
+    Nework Arguments:  layers:34,drop_out_precent:0.5,out_channels:12
     
 
 
@@ -1627,7 +2742,7 @@ metrics = StandardTraining.loadMetrics(path)
     <tr>
       <td>1</td>
       <td>batch_size</td>
-      <td>16</td>
+      <td>64</td>
     </tr>
     <tr>
       <td>2</td>
@@ -1637,7 +2752,682 @@ metrics = StandardTraining.loadMetrics(path)
     <tr>
       <td>3</td>
       <td>num_epochs</td>
+      <td>2</td>
+    </tr>
+    <tr>
       <td>4</td>
+      <td>epoch_args</td>
+      <td>standard</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>use_positivity_weights</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>image_width</td>
+      <td>320</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>image_height</td>
+      <td>320</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>affineDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>translatePrecent</td>
+      <td>0.05</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>shearDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>brightnessJitter</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>contrastJitter</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>augPercent</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>observation_min_count</td>
+      <td>150</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>l2_reg</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>loss_reduction</td>
+      <td>sum</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>target_thresholds</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    Targets:  
+    
+    TRAINING
+    
+    ▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.070698</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.256169</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.743831</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.559423</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.391042</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.431125</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>28389</td>
+      <td>50925</td>
+      <td>0.684807</td>
+      <td>0.381757</td>
+      <td>0.490229</td>
+      <td>0.823958</td>
+      <td>0.635104</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>39628</td>
+      <td>62113</td>
+      <td>0.728147</td>
+      <td>0.464557</td>
+      <td>0.567225</td>
+      <td>0.830272</td>
+      <td>0.654103</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Lung_Opacity</td>
+      <td>88448</td>
+      <td>93903</td>
+      <td>0.609183</td>
+      <td>0.573794</td>
+      <td>0.590959</td>
+      <td>0.626146</td>
+      <td>0.597991</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Lung_Lesion</td>
+      <td>27198</td>
+      <td>49051</td>
+      <td>0.726487</td>
+      <td>0.402826</td>
+      <td>0.518276</td>
+      <td>0.855167</td>
+      <td>0.671039</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Edema</td>
+      <td>49114</td>
+      <td>76852</td>
+      <td>0.758725</td>
+      <td>0.484880</td>
+      <td>0.591652</td>
+      <td>0.806052</td>
+      <td>0.597335</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>31121</td>
+      <td>54526</td>
+      <td>0.692555</td>
+      <td>0.395279</td>
+      <td>0.503298</td>
+      <td>0.818559</td>
+      <td>0.628081</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>19396</td>
+      <td>42130</td>
+      <td>0.755517</td>
+      <td>0.347828</td>
+      <td>0.476351</td>
+      <td>0.879258</td>
+      <td>0.667951</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>43380</td>
+      <td>76874</td>
+      <td>0.622430</td>
+      <td>0.351237</td>
+      <td>0.449066</td>
+      <td>0.694126</td>
+      <td>0.478691</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>28357</td>
+      <td>56417</td>
+      <td>0.712699</td>
+      <td>0.358225</td>
+      <td>0.476797</td>
+      <td>0.824873</td>
+      <td>0.606382</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Pleural_Effusion</td>
+      <td>71673</td>
+      <td>85548</td>
+      <td>0.678414</td>
+      <td>0.568383</td>
+      <td>0.618543</td>
+      <td>0.735183</td>
+      <td>0.636767</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>16013</td>
+      <td>34720</td>
+      <td>0.832511</td>
+      <td>0.383957</td>
+      <td>0.525536</td>
+      <td>0.930100</td>
+      <td>0.741483</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>24630</td>
+      <td>50700</td>
+      <td>0.717702</td>
+      <td>0.348659</td>
+      <td>0.469322</td>
+      <td>0.843582</td>
+      <td>0.635057</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_53_6.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_53_8.png)
+
+
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.073240</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.210583</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.789417</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.436456</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.263757</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.305644</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>1360</td>
+      <td>715</td>
+      <td>0.069853</td>
+      <td>0.132867</td>
+      <td>0.091566</td>
+      <td>0.578662</td>
+      <td>0.076578</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>2968</td>
+      <td>3437</td>
+      <td>0.375674</td>
+      <td>0.324411</td>
+      <td>0.348165</td>
+      <td>0.756275</td>
+      <td>0.298674</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Lung_Opacity</td>
+      <td>12046</td>
+      <td>14266</td>
+      <td>0.670430</td>
+      <td>0.566101</td>
+      <td>0.613864</td>
+      <td>0.663134</td>
+      <td>0.584248</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Lung_Lesion</td>
+      <td>1145</td>
+      <td>2020</td>
+      <td>0.149345</td>
+      <td>0.084653</td>
+      <td>0.108057</td>
+      <td>0.637403</td>
+      <td>0.069609</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Edema</td>
+      <td>6166</td>
+      <td>13171</td>
+      <td>0.802952</td>
+      <td>0.375902</td>
+      <td>0.512075</td>
+      <td>0.768149</td>
+      <td>0.471081</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>1589</td>
+      <td>3638</td>
+      <td>0.234739</td>
+      <td>0.102529</td>
+      <td>0.142720</td>
+      <td>0.621928</td>
+      <td>0.092922</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>728</td>
+      <td>3257</td>
+      <td>0.214286</td>
+      <td>0.047897</td>
+      <td>0.078294</td>
+      <td>0.597343</td>
+      <td>0.040977</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>4168</td>
+      <td>8483</td>
+      <td>0.410029</td>
+      <td>0.201462</td>
+      <td>0.270176</td>
+      <td>0.594270</td>
+      <td>0.196096</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>2167</td>
+      <td>5071</td>
+      <td>0.371943</td>
+      <td>0.158943</td>
+      <td>0.222713</td>
+      <td>0.656757</td>
+      <td>0.152650</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Pleural_Effusion</td>
+      <td>9032</td>
+      <td>12275</td>
+      <td>0.723428</td>
+      <td>0.532301</td>
+      <td>0.613320</td>
+      <td>0.760042</td>
+      <td>0.587754</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>362</td>
+      <td>2632</td>
+      <td>0.279006</td>
+      <td>0.038374</td>
+      <td>0.067468</td>
+      <td>0.681808</td>
+      <td>0.031597</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>1184</td>
+      <td>4050</td>
+      <td>0.288007</td>
+      <td>0.084198</td>
+      <td>0.130302</td>
+      <td>0.645708</td>
+      <td>0.082119</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_53_13.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_53_15.png)
+
+
+    
+    ACCURACY
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_53_17.png)
+
+
+    
+    RECALL
+    
+    ▔▔▔
+    
+
+
+![png](Readme%20Images/output_53_19.png)
+
+
+    
+    PRECISION
+    
+    ▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_53_21.png)
+
+
+    
+    F1
+    
+    ▔
+    
+
+
+![png](Readme%20Images/output_53_23.png)
+
+
+    
+    ROC AUC
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_53_25.png)
+
+
+    
+    AVERAGE PRECISION
+    
+    ▔▔▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_53_27.png)
+
+
+### Pretrained ResNet
+
+
+```python
+save_name = 'ResNet34_Pretrained_Oversample_L2_Sum_PosWeight_12_Targets'
+path= f'notebooks/ModelRuns/saved/{save_name}/'
+StandardTraining.displayRunParameters(path)
+metrics = StandardTraining.loadMetrics(path) 
+
+metrics.displayMetrics()
+metrics.displayEpochProgression()
+```
+
+    Network Name:  ResNet_PreTrained
+    Nework Arguments:  layers:34,drop_out_precent:0.5,out_channels:12
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Paramter</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>number_images</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>batch_size</td>
+      <td>64</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>learning_rate</td>
+      <td>1e-05</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>num_epochs</td>
+      <td>2</td>
     </tr>
     <tr>
       <td>4</td>
@@ -1704,19 +3494,17 @@ metrics = StandardTraining.loadMetrics(path)
       <td>loss_reduction</td>
       <td>sum</td>
     </tr>
+    <tr>
+      <td>17</td>
+      <td>target_thresholds</td>
+      <td></td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
-    Targets:  Atelectasis,Cardiomegaly,Consolidation,Edema,Pleural_Effusion
-    
-
-
-```python
-metrics.displayMetrics()   
-```
-
+    Targets:  
     
     TRAINING
     
@@ -1748,23 +3536,27 @@ metrics.displayMetrics()
   <tbody>
     <tr>
       <td>Accuracy Score</td>
-      <td>0.201868</td>
+      <td>0.255856</td>
     </tr>
     <tr>
       <td>Hamming Loss</td>
-      <td>0.355581</td>
+      <td>0.154669</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.845331</td>
     </tr>
     <tr>
       <td>Combined Recall</td>
-      <td>0.307234</td>
+      <td>0.634481</td>
     </tr>
     <tr>
       <td>Combined Precision</td>
-      <td>0.183334</td>
+      <td>0.523190</td>
     </tr>
     <tr>
       <td>Combined F1</td>
-      <td>0.215095</td>
+      <td>0.549183</td>
     </tr>
   </tbody>
 </table>
@@ -1803,58 +3595,135 @@ metrics.displayMetrics()
   <tbody>
     <tr>
       <td>0</td>
-      <td>Atelectasis</td>
-      <td>17421</td>
-      <td>25858</td>
-      <td>0.256415</td>
-      <td>0.172751</td>
-      <td>0.206428</td>
-      <td>0.521008</td>
-      <td>0.175118</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>27792</td>
+      <td>40897</td>
+      <td>0.814047</td>
+      <td>0.553195</td>
+      <td>0.658737</td>
+      <td>0.921149</td>
+      <td>0.819371</td>
     </tr>
     <tr>
       <td>1</td>
       <td>Cardiomegaly</td>
-      <td>12832</td>
-      <td>65322</td>
-      <td>0.817488</td>
-      <td>0.160589</td>
-      <td>0.268444</td>
-      <td>0.675674</td>
-      <td>0.209964</td>
+      <td>38874</td>
+      <td>51297</td>
+      <td>0.819108</td>
+      <td>0.620738</td>
+      <td>0.706258</td>
+      <td>0.920638</td>
+      <td>0.825041</td>
     </tr>
     <tr>
       <td>2</td>
-      <td>Consolidation</td>
-      <td>7614</td>
-      <td>37507</td>
-      <td>0.684660</td>
-      <td>0.138987</td>
-      <td>0.231068</td>
-      <td>0.747371</td>
-      <td>0.230013</td>
+      <td>Lung_Opacity</td>
+      <td>87780</td>
+      <td>89895</td>
+      <td>0.690203</td>
+      <td>0.673964</td>
+      <td>0.681987</td>
+      <td>0.766230</td>
+      <td>0.760296</td>
     </tr>
     <tr>
       <td>3</td>
-      <td>Edema</td>
-      <td>25220</td>
-      <td>22878</td>
-      <td>0.258366</td>
-      <td>0.284815</td>
-      <td>0.270947</td>
-      <td>0.583052</td>
-      <td>0.281555</td>
+      <td>Lung_Lesion</td>
+      <td>27539</td>
+      <td>37874</td>
+      <td>0.842224</td>
+      <td>0.612399</td>
+      <td>0.709156</td>
+      <td>0.941498</td>
+      <td>0.859813</td>
     </tr>
     <tr>
       <td>4</td>
+      <td>Edema</td>
+      <td>49042</td>
+      <td>68855</td>
+      <td>0.813058</td>
+      <td>0.579101</td>
+      <td>0.676421</td>
+      <td>0.882525</td>
+      <td>0.750748</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>30989</td>
+      <td>43864</td>
+      <td>0.805802</td>
+      <td>0.569282</td>
+      <td>0.667201</td>
+      <td>0.919201</td>
+      <td>0.822073</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>18842</td>
+      <td>29252</td>
+      <td>0.870608</td>
+      <td>0.560782</td>
+      <td>0.682164</td>
+      <td>0.955870</td>
+      <td>0.869501</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>42634</td>
+      <td>63096</td>
+      <td>0.727870</td>
+      <td>0.491822</td>
+      <td>0.587005</td>
+      <td>0.842196</td>
+      <td>0.712100</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>28353</td>
+      <td>43242</td>
+      <td>0.831235</td>
+      <td>0.545026</td>
+      <td>0.658370</td>
+      <td>0.928227</td>
+      <td>0.808028</td>
+    </tr>
+    <tr>
+      <td>9</td>
       <td>Pleural_Effusion</td>
-      <td>36416</td>
-      <td>46646</td>
-      <td>0.747117</td>
-      <td>0.583265</td>
-      <td>0.655101</td>
-      <td>0.810452</td>
-      <td>0.678997</td>
+      <td>71427</td>
+      <td>79216</td>
+      <td>0.793887</td>
+      <td>0.715828</td>
+      <td>0.752839</td>
+      <td>0.879275</td>
+      <td>0.834793</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>16147</td>
+      <td>22079</td>
+      <td>0.933362</td>
+      <td>0.682594</td>
+      <td>0.788521</td>
+      <td>0.982883</td>
+      <td>0.935948</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>25547</td>
+      <td>36862</td>
+      <td>0.847418</td>
+      <td>0.587299</td>
+      <td>0.693778</td>
+      <td>0.944734</td>
+      <td>0.858038</td>
     </tr>
   </tbody>
 </table>
@@ -1865,14 +3734,14 @@ metrics.displayMetrics()
     
 
 
-![png](Readme%20Images/output_43_4.png)
+![png](Readme%20Images/output_55_6.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme%20Images/output_43_6.png)
+![png](Readme%20Images/output_55_8.png)
 
 
     
@@ -1906,23 +3775,27 @@ metrics.displayMetrics()
   <tbody>
     <tr>
       <td>Accuracy Score</td>
-      <td>0.227460</td>
+      <td>0.109693</td>
     </tr>
     <tr>
       <td>Hamming Loss</td>
-      <td>0.334851</td>
+      <td>0.181582</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.818418</td>
     </tr>
     <tr>
       <td>Combined Recall</td>
-      <td>0.289649</td>
+      <td>0.444164</td>
     </tr>
     <tr>
       <td>Combined Precision</td>
-      <td>0.179136</td>
+      <td>0.307509</td>
     </tr>
     <tr>
       <td>Combined F1</td>
-      <td>0.206391</td>
+      <td>0.337678</td>
     </tr>
   </tbody>
 </table>
@@ -1961,58 +3834,135 @@ metrics.displayMetrics()
   <tbody>
     <tr>
       <td>0</td>
-      <td>Atelectasis</td>
-      <td>4104</td>
-      <td>5471</td>
-      <td>0.205653</td>
-      <td>0.154268</td>
-      <td>0.176292</td>
-      <td>0.506564</td>
-      <td>0.155841</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>1364</td>
+      <td>2073</td>
+      <td>0.188416</td>
+      <td>0.123975</td>
+      <td>0.149549</td>
+      <td>0.619422</td>
+      <td>0.093925</td>
     </tr>
     <tr>
       <td>1</td>
       <td>Cardiomegaly</td>
-      <td>2995</td>
-      <td>15220</td>
-      <td>0.791987</td>
-      <td>0.155848</td>
-      <td>0.260445</td>
-      <td>0.674204</td>
-      <td>0.200342</td>
+      <td>2956</td>
+      <td>4167</td>
+      <td>0.503045</td>
+      <td>0.356851</td>
+      <td>0.417521</td>
+      <td>0.797455</td>
+      <td>0.373997</td>
     </tr>
     <tr>
       <td>2</td>
-      <td>Consolidation</td>
-      <td>1571</td>
-      <td>6830</td>
-      <td>0.446213</td>
-      <td>0.102635</td>
-      <td>0.166885</td>
-      <td>0.651252</td>
-      <td>0.100495</td>
+      <td>Lung_Opacity</td>
+      <td>11989</td>
+      <td>12571</td>
+      <td>0.617066</td>
+      <td>0.588497</td>
+      <td>0.602443</td>
+      <td>0.679493</td>
+      <td>0.601616</td>
     </tr>
     <tr>
       <td>3</td>
-      <td>Edema</td>
-      <td>6067</td>
-      <td>5483</td>
-      <td>0.256799</td>
-      <td>0.284151</td>
-      <td>0.269784</td>
-      <td>0.594591</td>
-      <td>0.276674</td>
+      <td>Lung_Lesion</td>
+      <td>1087</td>
+      <td>2647</td>
+      <td>0.263109</td>
+      <td>0.108047</td>
+      <td>0.153187</td>
+      <td>0.680805</td>
+      <td>0.091803</td>
     </tr>
     <tr>
       <td>4</td>
+      <td>Edema</td>
+      <td>6098</td>
+      <td>9647</td>
+      <td>0.707773</td>
+      <td>0.447393</td>
+      <td>0.548238</td>
+      <td>0.794989</td>
+      <td>0.498590</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>1573</td>
+      <td>3433</td>
+      <td>0.265734</td>
+      <td>0.121759</td>
+      <td>0.167000</td>
+      <td>0.662971</td>
+      <td>0.104132</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>680</td>
+      <td>2221</td>
+      <td>0.238235</td>
+      <td>0.072940</td>
+      <td>0.111686</td>
+      <td>0.675856</td>
+      <td>0.061291</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>4186</td>
+      <td>8653</td>
+      <td>0.468705</td>
+      <td>0.226742</td>
+      <td>0.305631</td>
+      <td>0.630723</td>
+      <td>0.224188</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>2153</td>
+      <td>4568</td>
+      <td>0.537854</td>
+      <td>0.253503</td>
+      <td>0.344592</td>
+      <td>0.783401</td>
+      <td>0.288115</td>
+    </tr>
+    <tr>
+      <td>9</td>
       <td>Pleural_Effusion</td>
-      <td>8958</td>
-      <td>11182</td>
-      <td>0.727395</td>
-      <td>0.582722</td>
-      <td>0.647071</td>
-      <td>0.801780</td>
-      <td>0.662120</td>
+      <td>8859</td>
+      <td>10972</td>
+      <td>0.745457</td>
+      <td>0.601896</td>
+      <td>0.666028</td>
+      <td>0.823539</td>
+      <td>0.694592</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>377</td>
+      <td>857</td>
+      <td>0.185676</td>
+      <td>0.081680</td>
+      <td>0.113452</td>
+      <td>0.716468</td>
+      <td>0.063173</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>1224</td>
+      <td>1960</td>
+      <td>0.217320</td>
+      <td>0.135714</td>
+      <td>0.167085</td>
+      <td>0.682903</td>
+      <td>0.117059</td>
     </tr>
   </tbody>
 </table>
@@ -2023,20 +3973,15 @@ metrics.displayMetrics()
     
 
 
-![png](Readme%20Images/output_43_11.png)
+![png](Readme%20Images/output_55_13.png)
 
 
     ***** Precision / Recall *****
     
 
 
-![png](Readme%20Images/output_43_13.png)
+![png](Readme%20Images/output_55_15.png)
 
-
-
-```python
-metrics.displayEpochProgression()
-```
 
     
     ACCURACY
@@ -2045,7 +3990,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_1.png)
+![png](Readme%20Images/output_55_17.png)
 
 
     
@@ -2055,7 +4000,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_3.png)
+![png](Readme%20Images/output_55_19.png)
 
 
     
@@ -2065,7 +4010,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_5.png)
+![png](Readme%20Images/output_55_21.png)
 
 
     
@@ -2075,7 +4020,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_7.png)
+![png](Readme%20Images/output_55_23.png)
 
 
     
@@ -2085,7 +4030,7 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_9.png)
+![png](Readme%20Images/output_55_25.png)
 
 
     
@@ -2095,5 +4040,2398 @@ metrics.displayEpochProgression()
     
 
 
-![png](Readme%20Images/output_44_11.png)
+![png](Readme%20Images/output_55_27.png)
 
+
+#### Viritually no change in the Validation Combined Recall scores
+
+This is expected somewhat, but the duration of the training was not that much better.
+
+# 20 Epochs <a class="anchor" id="20_Epochs"></a>
+
+### ResNet with all 12 Targets with 20 Epochs:
+
+<a href="notebooks/ModelRuns/ResNet34_Oversample_L2_Sum_PosWeight_12_Targets_20_Epochs.ipynb" >ResNet34_Oversample_L2_Sum_PosWeight_12_Targets_20_Epochs</a>
+
+
+```python
+save_name = 'ResNet34_Oversample_L2_Sum_PosWeight_12_Targets_20_Epochs'
+path= f'notebooks/ModelRuns/saved/{save_name}/'
+StandardTraining.displayRunParameters(path)
+metrics = StandardTraining.loadMetrics(path) 
+
+display_args = {'metricDataSource':MetricDataSource.Both, 
+                  'showCombinedMetrics':True, 
+                  'showMetricDataFrame':False, 
+                  'showROCCurves':False, 
+                  'showPrecisionRecallCurves':False}
+
+metrics.displayMetrics(**display_args)
+
+progression_args = {'metricDataSource':MetricDataSource.ValidationOnly, 
+                  'showAccuracyProgression':False, 
+                  'showRecallProgression':True, 
+                  'showPrecisionProgression':True, 
+                  'showROCAUCProgression':False, 
+                  'showAvgPrecisionProgression':False}
+
+metrics.displayEpochProgression(**progression_args)
+```
+
+    Network Name:  ResNet_GrayScale
+    Nework Arguments:  layers:34,drop_out_precent:0.5,out_channels:12
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Paramter</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>number_images</td>
+      <td>25000</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>batch_size</td>
+      <td>64</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>learning_rate</td>
+      <td>1e-05</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>num_epochs</td>
+      <td>20</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>epoch_args</td>
+      <td>standard</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>use_positivity_weights</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>image_width</td>
+      <td>320</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>image_height</td>
+      <td>320</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>affineDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>translatePrecent</td>
+      <td>0.05</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>shearDegrees</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>brightnessJitter</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>contrastJitter</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>augPercent</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>observation_min_count</td>
+      <td>150</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>l2_reg</td>
+      <td>0.1</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>loss_reduction</td>
+      <td>sum</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>target_thresholds</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    Targets:  
+    
+    TRAINING
+    
+    ▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.526673</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.082643</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.917357</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.768183</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.697907</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.713543</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>5857</td>
+      <td>7366</td>
+      <td>0.922998</td>
+      <td>0.733913</td>
+      <td>0.817666</td>
+      <td>0.983428</td>
+      <td>0.946545</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>8605</td>
+      <td>10575</td>
+      <td>0.915166</td>
+      <td>0.744681</td>
+      <td>0.821168</td>
+      <td>0.977287</td>
+      <td>0.934286</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Lung_Opacity</td>
+      <td>21542</td>
+      <td>21932</td>
+      <td>0.805543</td>
+      <td>0.791218</td>
+      <td>0.798316</td>
+      <td>0.901722</td>
+      <td>0.899978</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Lung_Lesion</td>
+      <td>5595</td>
+      <td>6987</td>
+      <td>0.927256</td>
+      <td>0.742522</td>
+      <td>0.824670</td>
+      <td>0.985741</td>
+      <td>0.949754</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Edema</td>
+      <td>12112</td>
+      <td>15005</td>
+      <td>0.881027</td>
+      <td>0.711163</td>
+      <td>0.787034</td>
+      <td>0.953138</td>
+      <td>0.896425</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>7367</td>
+      <td>8809</td>
+      <td>0.919370</td>
+      <td>0.768873</td>
+      <td>0.837413</td>
+      <td>0.981663</td>
+      <td>0.948200</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>4252</td>
+      <td>5535</td>
+      <td>0.943321</td>
+      <td>0.724661</td>
+      <td>0.819659</td>
+      <td>0.989571</td>
+      <td>0.953589</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>10754</td>
+      <td>13321</td>
+      <td>0.849916</td>
+      <td>0.686135</td>
+      <td>0.759294</td>
+      <td>0.946634</td>
+      <td>0.888812</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>6438</td>
+      <td>8566</td>
+      <td>0.912395</td>
+      <td>0.685734</td>
+      <td>0.782991</td>
+      <td>0.978700</td>
+      <td>0.926639</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Pleural_Effusion</td>
+      <td>17870</td>
+      <td>19020</td>
+      <td>0.863626</td>
+      <td>0.811409</td>
+      <td>0.836704</td>
+      <td>0.944557</td>
+      <td>0.926087</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>2325</td>
+      <td>3148</td>
+      <td>0.965161</td>
+      <td>0.712834</td>
+      <td>0.820026</td>
+      <td>0.994740</td>
+      <td>0.970205</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>5908</td>
+      <td>7207</td>
+      <td>0.931280</td>
+      <td>0.763424</td>
+      <td>0.839039</td>
+      <td>0.986029</td>
+      <td>0.954353</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_58_6.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_58_8.png)
+
+
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.073999</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.193756</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.806244</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.415355</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.305286</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.326690</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Target</th>
+      <th>True Positives</th>
+      <th>Predicted Positives</th>
+      <th>Recall</th>
+      <th>Precision</th>
+      <th>F1</th>
+      <th>ROC AUC</th>
+      <th>Avg Precision</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Enlarged_Cardiomediastinum</td>
+      <td>282</td>
+      <td>894</td>
+      <td>0.269504</td>
+      <td>0.085011</td>
+      <td>0.129252</td>
+      <td>0.563703</td>
+      <td>0.083289</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cardiomegaly</td>
+      <td>580</td>
+      <td>605</td>
+      <td>0.370690</td>
+      <td>0.355372</td>
+      <td>0.362869</td>
+      <td>0.766631</td>
+      <td>0.325836</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Lung_Opacity</td>
+      <td>2266</td>
+      <td>2688</td>
+      <td>0.642101</td>
+      <td>0.541295</td>
+      <td>0.587404</td>
+      <td>0.623695</td>
+      <td>0.562412</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Lung_Lesion</td>
+      <td>186</td>
+      <td>129</td>
+      <td>0.069892</td>
+      <td>0.100775</td>
+      <td>0.082540</td>
+      <td>0.629615</td>
+      <td>0.063915</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Edema</td>
+      <td>1146</td>
+      <td>1298</td>
+      <td>0.508726</td>
+      <td>0.449153</td>
+      <td>0.477087</td>
+      <td>0.756542</td>
+      <td>0.458977</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Consolidation</td>
+      <td>297</td>
+      <td>869</td>
+      <td>0.269360</td>
+      <td>0.092060</td>
+      <td>0.137221</td>
+      <td>0.602442</td>
+      <td>0.086084</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Pneumonia</td>
+      <td>110</td>
+      <td>99</td>
+      <td>0.036364</td>
+      <td>0.040404</td>
+      <td>0.038278</td>
+      <td>0.574177</td>
+      <td>0.032128</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Atelectasis</td>
+      <td>772</td>
+      <td>924</td>
+      <td>0.248705</td>
+      <td>0.207792</td>
+      <td>0.226415</td>
+      <td>0.575308</td>
+      <td>0.195365</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Pneumothorax</td>
+      <td>390</td>
+      <td>849</td>
+      <td>0.376923</td>
+      <td>0.173145</td>
+      <td>0.237288</td>
+      <td>0.693536</td>
+      <td>0.185865</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Pleural_Effusion</td>
+      <td>1704</td>
+      <td>2910</td>
+      <td>0.822770</td>
+      <td>0.481787</td>
+      <td>0.607716</td>
+      <td>0.756839</td>
+      <td>0.618659</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Pleural_Other</td>
+      <td>59</td>
+      <td>48</td>
+      <td>0.033898</td>
+      <td>0.041667</td>
+      <td>0.037383</td>
+      <td>0.545679</td>
+      <td>0.015772</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Fracture</td>
+      <td>202</td>
+      <td>554</td>
+      <td>0.212871</td>
+      <td>0.077617</td>
+      <td>0.113757</td>
+      <td>0.645914</td>
+      <td>0.066030</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ***** ROC *****
+    
+
+
+![png](Readme%20Images/output_58_13.png)
+
+
+    ***** Precision / Recall *****
+    
+
+
+![png](Readme%20Images/output_58_15.png)
+
+
+    
+    TRAIN FINAL RESULTS
+    
+    ▔▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-25452.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25451.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25450.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25449.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25448.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223392.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223397.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223398.0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223402.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223405.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>45533 rows × 12 columns</p>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-25452.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25451.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25450.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25449.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>-25448.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223392.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223397.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223398.0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223402.0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223405.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>45533 rows × 12 columns</p>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-25452.0</td>
+      <td>0.995819</td>
+      <td>0.994172</td>
+      <td>0.989521</td>
+      <td>0.000290</td>
+      <td>0.966181</td>
+      <td>0.001927</td>
+      <td>0.001891</td>
+      <td>0.055349</td>
+      <td>0.013108</td>
+      <td>0.988429</td>
+      <td>0.008873</td>
+      <td>0.995256</td>
+    </tr>
+    <tr>
+      <td>-25451.0</td>
+      <td>0.998661</td>
+      <td>0.943405</td>
+      <td>0.940287</td>
+      <td>0.008383</td>
+      <td>0.907845</td>
+      <td>0.001876</td>
+      <td>0.005646</td>
+      <td>0.253208</td>
+      <td>0.025222</td>
+      <td>0.957808</td>
+      <td>0.003246</td>
+      <td>0.961371</td>
+    </tr>
+    <tr>
+      <td>-25450.0</td>
+      <td>0.999678</td>
+      <td>0.999868</td>
+      <td>0.980721</td>
+      <td>0.000828</td>
+      <td>0.995356</td>
+      <td>0.001507</td>
+      <td>0.000106</td>
+      <td>0.008755</td>
+      <td>0.001311</td>
+      <td>0.987003</td>
+      <td>0.012743</td>
+      <td>0.999879</td>
+    </tr>
+    <tr>
+      <td>-25449.0</td>
+      <td>0.998583</td>
+      <td>0.999681</td>
+      <td>0.991738</td>
+      <td>0.000718</td>
+      <td>0.998302</td>
+      <td>0.000235</td>
+      <td>0.000210</td>
+      <td>0.003591</td>
+      <td>0.000878</td>
+      <td>0.981242</td>
+      <td>0.000612</td>
+      <td>0.987960</td>
+    </tr>
+    <tr>
+      <td>-25448.0</td>
+      <td>0.998068</td>
+      <td>0.998675</td>
+      <td>0.980885</td>
+      <td>0.004062</td>
+      <td>0.970061</td>
+      <td>0.016386</td>
+      <td>0.003336</td>
+      <td>0.028708</td>
+      <td>0.004543</td>
+      <td>0.954752</td>
+      <td>0.004928</td>
+      <td>0.951314</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223392.0</td>
+      <td>0.059551</td>
+      <td>0.003064</td>
+      <td>0.506585</td>
+      <td>0.179777</td>
+      <td>0.317946</td>
+      <td>0.002346</td>
+      <td>0.012338</td>
+      <td>0.480597</td>
+      <td>0.329967</td>
+      <td>0.011184</td>
+      <td>0.009112</td>
+      <td>0.039235</td>
+    </tr>
+    <tr>
+      <td>223397.0</td>
+      <td>0.003435</td>
+      <td>0.010089</td>
+      <td>0.834416</td>
+      <td>0.059518</td>
+      <td>0.881831</td>
+      <td>0.935206</td>
+      <td>0.398462</td>
+      <td>0.096688</td>
+      <td>0.096298</td>
+      <td>0.990317</td>
+      <td>0.014695</td>
+      <td>0.026965</td>
+    </tr>
+    <tr>
+      <td>223398.0</td>
+      <td>0.962806</td>
+      <td>0.070954</td>
+      <td>0.527956</td>
+      <td>0.033919</td>
+      <td>0.731061</td>
+      <td>0.054588</td>
+      <td>0.029095</td>
+      <td>0.072808</td>
+      <td>0.025582</td>
+      <td>0.106971</td>
+      <td>0.005548</td>
+      <td>0.293207</td>
+    </tr>
+    <tr>
+      <td>223402.0</td>
+      <td>0.514735</td>
+      <td>0.080669</td>
+      <td>0.330852</td>
+      <td>0.015251</td>
+      <td>0.084944</td>
+      <td>0.014819</td>
+      <td>0.005834</td>
+      <td>0.279141</td>
+      <td>0.214357</td>
+      <td>0.323485</td>
+      <td>0.104615</td>
+      <td>0.148298</td>
+    </tr>
+    <tr>
+      <td>223405.0</td>
+      <td>0.030742</td>
+      <td>0.002546</td>
+      <td>0.664511</td>
+      <td>0.038455</td>
+      <td>0.068594</td>
+      <td>0.040359</td>
+      <td>0.175476</td>
+      <td>0.226836</td>
+      <td>0.287611</td>
+      <td>0.178638</td>
+      <td>0.007066</td>
+      <td>0.008680</td>
+    </tr>
+  </tbody>
+</table>
+<p>45533 rows × 12 columns</p>
+</div>
+
+
+    
+    VALIDATION FINAL RESULTS
+    
+    ▔▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+    <tr>
+      <th>ImageID</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>54</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>56</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>154</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>180</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>187</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223276</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223286</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223290</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223330</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223373</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>4919 rows × 12 columns</p>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>54</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>56</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>154</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>180</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>187</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223276</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223286</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223290</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223330</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>223373</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>4919 rows × 12 columns</p>
+</div>
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Enlarged_Cardiomediastinum</th>
+      <th>Cardiomegaly</th>
+      <th>Lung_Opacity</th>
+      <th>Lung_Lesion</th>
+      <th>Edema</th>
+      <th>Consolidation</th>
+      <th>Pneumonia</th>
+      <th>Atelectasis</th>
+      <th>Pneumothorax</th>
+      <th>Pleural_Effusion</th>
+      <th>Pleural_Other</th>
+      <th>Fracture</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>54</td>
+      <td>0.077334</td>
+      <td>0.001095</td>
+      <td>0.678250</td>
+      <td>0.066726</td>
+      <td>0.071929</td>
+      <td>0.544675</td>
+      <td>0.003443</td>
+      <td>0.046549</td>
+      <td>0.056782</td>
+      <td>0.737925</td>
+      <td>0.002823</td>
+      <td>0.039650</td>
+    </tr>
+    <tr>
+      <td>56</td>
+      <td>0.008291</td>
+      <td>0.008855</td>
+      <td>0.133172</td>
+      <td>0.003383</td>
+      <td>0.135987</td>
+      <td>0.004597</td>
+      <td>0.005927</td>
+      <td>0.742555</td>
+      <td>0.283151</td>
+      <td>0.764283</td>
+      <td>0.001360</td>
+      <td>0.954860</td>
+    </tr>
+    <tr>
+      <td>154</td>
+      <td>0.620852</td>
+      <td>0.711241</td>
+      <td>0.768301</td>
+      <td>0.017725</td>
+      <td>0.478895</td>
+      <td>0.773944</td>
+      <td>0.022510</td>
+      <td>0.640573</td>
+      <td>0.095534</td>
+      <td>0.890298</td>
+      <td>0.112709</td>
+      <td>0.118202</td>
+    </tr>
+    <tr>
+      <td>180</td>
+      <td>0.042131</td>
+      <td>0.027220</td>
+      <td>0.683734</td>
+      <td>0.024483</td>
+      <td>0.296345</td>
+      <td>0.068229</td>
+      <td>0.006403</td>
+      <td>0.655291</td>
+      <td>0.117992</td>
+      <td>0.775105</td>
+      <td>0.081394</td>
+      <td>0.021452</td>
+    </tr>
+    <tr>
+      <td>187</td>
+      <td>0.018363</td>
+      <td>0.546318</td>
+      <td>0.156341</td>
+      <td>0.024508</td>
+      <td>0.277794</td>
+      <td>0.310554</td>
+      <td>0.003230</td>
+      <td>0.260627</td>
+      <td>0.050760</td>
+      <td>0.533782</td>
+      <td>0.142138</td>
+      <td>0.742498</td>
+    </tr>
+    <tr>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <td>223276</td>
+      <td>0.426581</td>
+      <td>0.787512</td>
+      <td>0.553473</td>
+      <td>0.075725</td>
+      <td>0.781964</td>
+      <td>0.574289</td>
+      <td>0.004426</td>
+      <td>0.150648</td>
+      <td>0.065995</td>
+      <td>0.894799</td>
+      <td>0.025939</td>
+      <td>0.016615</td>
+    </tr>
+    <tr>
+      <td>223286</td>
+      <td>0.046240</td>
+      <td>0.005990</td>
+      <td>0.497309</td>
+      <td>0.040975</td>
+      <td>0.013985</td>
+      <td>0.125687</td>
+      <td>0.008730</td>
+      <td>0.956722</td>
+      <td>0.744031</td>
+      <td>0.838208</td>
+      <td>0.001618</td>
+      <td>0.009000</td>
+    </tr>
+    <tr>
+      <td>223290</td>
+      <td>0.008460</td>
+      <td>0.000545</td>
+      <td>0.620019</td>
+      <td>0.392250</td>
+      <td>0.077927</td>
+      <td>0.069077</td>
+      <td>0.002956</td>
+      <td>0.109105</td>
+      <td>0.952156</td>
+      <td>0.126582</td>
+      <td>0.017344</td>
+      <td>0.078954</td>
+    </tr>
+    <tr>
+      <td>223330</td>
+      <td>0.002421</td>
+      <td>0.102332</td>
+      <td>0.460809</td>
+      <td>0.000138</td>
+      <td>0.750861</td>
+      <td>0.130960</td>
+      <td>0.003778</td>
+      <td>0.325830</td>
+      <td>0.302825</td>
+      <td>0.604168</td>
+      <td>0.000074</td>
+      <td>0.013888</td>
+    </tr>
+    <tr>
+      <td>223373</td>
+      <td>0.021343</td>
+      <td>0.012608</td>
+      <td>0.065582</td>
+      <td>0.005111</td>
+      <td>0.302720</td>
+      <td>0.005187</td>
+      <td>0.095934</td>
+      <td>0.592524</td>
+      <td>0.013126</td>
+      <td>0.168957</td>
+      <td>0.000393</td>
+      <td>0.000480</td>
+    </tr>
+  </tbody>
+</table>
+<p>4919 rows × 12 columns</p>
+</div>
+
+
+    
+    ACCURACY
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_58_25.png)
+
+
+    
+    RECALL
+    
+    ▔▔▔
+    
+
+
+![png](Readme%20Images/output_58_27.png)
+
+
+    
+    PRECISION
+    
+    ▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_58_29.png)
+
+
+    
+    F1
+    
+    ▔
+    
+
+
+![png](Readme%20Images/output_58_31.png)
+
+
+    
+    ROC AUC
+    
+    ▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_58_33.png)
+
+
+    
+    AVERAGE PRECISION
+    
+    ▔▔▔▔▔▔▔▔
+    
+
+
+![png](Readme%20Images/output_58_35.png)
+
+
+# Target Competition
+
+The final scores were not very good.  With 20 epochs, you see the classical overfitting.  Even with over 130,000 images, it looks like the ResNet was able to memorize the dataset.  Almost all of the training Recall and ROC AUC values were in the 90% range.  
+
+## Epoch Progression
+
+The plots of the Epoch Progression are **extremely** telling here!  You can easily see how the training metric improves with more epochs.  But the validation sets very nicely shows the "toggling" effect.
+
+## In order to get gains from one target, another target must sacrifice!
+
+This makes sense.  We are training all 12 labels with the same set of weights.  Some of the diagnoses look for very different image features.  Several targets like  Lung_Opacity, Consolidation, Pneumonia and Atelectasis look for patterns in the air spaces of the lungs.  Targets like Cardiomegaly, Pneumothorax and Fracture look for silhouette shapes.
+
+The Recall based metrics show a much strong "toggling" effect whereas Precision based metrics tend to be more stable.
+
+
+# 5 Independent Models  <a class="anchor" id="5_Independent_Models"></a>
+
+### Below are the Metrics for 5 Model runs, each with single target
+
+
+```python
+display_args = {'metricDataSource':MetricDataSource.ValidationOnly, 
+                  'showCombinedMetrics':True, 
+                  'showMetricDataFrame':False, 
+                  'showROCCurves':False, 
+                  'showPrecisionRecallCurves':False}
+
+for save_name in ['ResNet34_Atelectasis', 
+                  'ResNet34_Cardiomegaly', 
+                  'ResNet34_Consolidation', 
+                  'ResNet34_Edema', 
+                  'ResNet34_Pleural_Effusion']:
+    path= f'notebooks/ModelRuns/saved/{save_name}/'
+    metrics = StandardTraining.loadMetrics(path) 
+    metrics.displayMetrics(**display_args)
+```
+
+    ▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+    ResNet34_Atelectasis
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.844359</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.155641</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.844359</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>1.000000</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.844353</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.915609</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+    ResNet34_Cardiomegaly
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.879555</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.120445</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.879555</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.964325</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.905884</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.934191</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+    ResNet34_Consolidation
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.940857</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.059143</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.940857</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>1.000000</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.940857</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.969527</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+    ResNet34_Edema
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.777065</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.222935</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.777065</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.995874</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.777842</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.873457</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+    ▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+    ResNet34_Pleural_Effusion
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+    
+    VALIDATION
+    
+    ▔▔▔▔▔▔▔
+    
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Score for all Targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Accuracy Score</td>
+      <td>0.753458</td>
+    </tr>
+    <tr>
+      <td>Hamming Loss</td>
+      <td>0.246542</td>
+    </tr>
+    <tr>
+      <td>Hamming Accuracy</td>
+      <td>0.753458</td>
+    </tr>
+    <tr>
+      <td>Combined Recall</td>
+      <td>0.832552</td>
+    </tr>
+    <tr>
+      <td>Combined Precision</td>
+      <td>0.800572</td>
+    </tr>
+    <tr>
+      <td>Combined F1</td>
+      <td>0.816249</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+### As we can see from the results, all the scores of these independant model runs are much better then when we run a single model predicting all 5 targets
+
+
+# Conclusions <a class="anchor" id="Conclusions"></a>
+
+## The Model was not Super Critical
+
+ResNet looked to be somewhat better than DenseNet and the custom model, but not overwhelmingly so.  This is not to say if more time was spent building different short circuits or dense blocks, we could get better performance.  But the main issue was not the ability to train.  In fact, overtraining was one of the major stumbling blocks.
+
+##  Regularization, Image Augmentation, Oversampling Critical, but NOT Enough
+
+The results of adding these training features was obviously very helpful, but it was not enough to overcome the competition between targets.
+
+## Model's were able to Quickly Achieve an Overtrained State
+
+# 12 Targets, 1 Set of Weights
+
+It looks like training 12 separate models, one for each target might be the best way to go.  But there might be other options within a Model architecture that prevents sharing weights between targets.
+
+
+# Future Areas of Exploration <a class="anchor" id="Future_Areas_of_Exploration"></a>
+
+### Model Architectures
+Because the emphasis was placed on understanding and building a framework, not as much time was spent exploring different model architectures.  A very good understanding was obtained from working with ResNet and DenseNet, but due to time constraints, no attempts were made to modify or enhance these two architectures.  
+
+### TensorBoard
+Initially, the plan was to use TensorBoard in this project.  But it was quickly found that a deeper background into the metrics associated with CNNs was needed.  In fact, this was the reason for making the emphasis on building a framework.  But there were features available in TensorBorad that would have been nice to see such as the visualization of filters and feature maps.
+
+### Productionization
+Due to time constraints, exploring the productionization of models was not done.  It would be nice to have set up an endpoint on AWS that you could post an x-ray to and return the model predictions.  Exploring how 12 separate models, one for each target, could be melded into a single API call and how updates to the end point could be made.
+
+### A more systematic approach to parameter tuning
+An attempt was made to do this more programmatically with the ModelLoop class.  But this was of limited help due to resource contention running multiple models in the same Python kernel.  Perhaps some kind of external code, i.e. C#could be used to start and tear down Python kernels so a set of models and/or parameters could be run unattended.
+
+
+
+# Should Haves
+As will all projects, looking back as what went good and what was not so good is always important.  So of the things that were missed, that could be cleaned up with a refactor could be:
+
+- Docstrings
+- Unit Tests
+- Refactoring of Classes
+- Better organization of folders
+- Better comments in the supporting notebooks
+- Better visualizations of the EDA
+- Add Radiology Terminology and examples of each diagnosis
+- More efficient Readme (sorry, tl:dr)
+
+
+Also missing were better explanations of ResNet and DenseNet.  Some educational notebooks would have been great to add.
+
+
+# Final Thoughts <a class="anchor" id="Final_Thoughts"></a>
+
+This journey was extremely helpful.  At the beginning of the project, a huge amount of time was spent trying to figure out things like:
+- Why shapes between layers or in metrics did not match up
+- Differences between Binary Classification, multi-class and multi-label problems
+- What loss functions where used and why the loss function didn't mate with the model outputs
+- etc, etc, etc
+
+But by the end of the project, most of not all of these types of things became second nature.  Deciding to extend the framework to allow only a single target was a relatively late addition to the project, but with the experience gained, this was a quick change with only minimal time spent figuring out any bugs.  
+
+In hindsight, this became the goal.  To gain the understanding and experience so that tackling these types of problems in the real world will be a much more efficient and effective process.
+
+Also, the two educational notebooks proved to be invaluable.  Understanding some of the internals of PyTorch and the fundamentals of Neural Networks gave the needed background to approach this type of problem solving.
+
+
+
+```python
+
+```
+
+
+```python
+
+```
+
+
+```python
+
+```
+
+
+```python
+
+```
+
+
+```python
+
+```
