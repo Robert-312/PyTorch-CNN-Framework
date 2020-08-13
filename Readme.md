@@ -9,7 +9,9 @@ https://stanfordmlgroup.github.io/competitions/chexpert/
 
 # Purpose
 
-The purpose of this project is to build a framework that will easily allow repeatable runs of the dataset with variable parameters, images counts, models, etc.  Though it is always desired to produce the best possible accuracy, recall and precision in our predictions, the main goal of this project is to build the framework to more easily allow finetuning of model runs and not specifically finding the best configuration.  The hope is that by building a solid framework, a much deeper understanding of the working of CNN and all Neural Networks will be gained.
+The purpose of this project is to build a framework that will easily allow repeatable runs of the dataset with different parameters, images counts, models, etc.  This framework will be used to determine the best starting model and it's initial hypterparameters.  
+
+Once a good starting point is found, a new project can be created that will fine tune and productionize the winning approach from this project.  
 
 # Framework ERD
 
@@ -53,7 +55,7 @@ Below if a high level entity relationship diagram of how the framework was built
 
 ### Build a Framework for better Understanding
 
-The primary goal of this project is to gain a deeper understanding of CNN and PyTorch.  There are already a lot of frameworks out there that do a lot more than what is built into this project, Keras and TensorBoard are some good examples.
+One of the primary goals of this project is to gain a deeper understanding of CNN and PyTorch.  There are already a lot of frameworks out there that do a lot more than what is built into this project, Keras and TensorBoard are some good examples.
 
 But it is very difficult to get a good understanding of what is happening behind the scenes if the work is already done for you.  So in this project, preference is given to manual coding over pre-built packages.  
 
